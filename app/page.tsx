@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 
 type Status =
   | "unsupported"
+  | "no-api-key"
   | "idle"
   | "recording"
   | "audio-captured"
@@ -16,19 +17,28 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isTextCopied, setIsTextCopied] = useState<boolean>(false);
   const [resultText, setResultText] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const uploadAudioFileExtensionRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const storedApiKey = localStorage.getItem("openai_api_key");
+    if (!storedApiKey) {
+      setStatus("no-api-key");
+      return;
+    }
+
     if (!navigator.mediaDevices) {
       setStatus("unsupported");
-    } else {
-      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-        mediaRecorderRef.current = new MediaRecorder(stream);
-      });
-      setStatus("idle");
+      return;
     }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      mediaRecorderRef.current = new MediaRecorder(stream);
+    });
+    setStatus("idle");
   }, []);
 
   useEffect(() => {
@@ -95,7 +105,7 @@ export default function Home() {
   };
 
   const handleTranscribeAudio = async () => {
-    if (!audioBlob) {
+    if (!audioBlob || !localStorage.getItem("openai_api_key")) {
       return;
     }
 
@@ -111,6 +121,9 @@ export default function Home() {
     } else {
       formData.append("audio_file", audioBlob, "recording.webm");
     }
+
+    formData.append("openai_api_key", localStorage.getItem("openai_api_key")!);
+
     try {
       const response = await fetch("http://localhost:8001/transcribe", {
         method: "POST",
@@ -167,10 +180,31 @@ export default function Home() {
     }
   };
 
+  const handleSaveApiKey = () => {
+    if (!apiKeyInput.trim()) {
+      return;
+    }
+    localStorage.setItem("openai_api_key", apiKeyInput.trim());
+    setIsSettingsOpen(false);
+    setApiKeyInput("");
+
+    if (!navigator.mediaDevices) {
+      setStatus("unsupported");
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      mediaRecorderRef.current = new MediaRecorder(stream);
+    });
+    setStatus("idle");
+  };
+
   const getStatusText = () => {
     switch (status) {
       case "unsupported":
-        return "不支援";
+        return "瀏覽器不支援或未授權使用麥克風";
+      case "no-api-key":
+        return "尚未設定 OpenAI API Key";
       case "idle":
         return "待機中";
       case "recording":
@@ -190,6 +224,8 @@ export default function Home() {
     switch (status) {
       case "unsupported":
         return "bg-slate-800/20 text-slate-400 border border-slate-700/30";
+      case "no-api-key":
+        return "bg-yellow-900/20 text-yellow-300 border border-yellow-700/30";
       case "idle":
         return "bg-slate-700/30 text-slate-300 border border-slate-600/30";
       case "recording":
@@ -223,7 +259,33 @@ export default function Home() {
     <div className="h-screen flex items-center justify-center bg-linear-to-br from-slate-950 via-slate-800 to-slate-950 font-sans overflow-hidden">
       <main className="h-full w-full max-w-5xl flex flex-col gap-4 py-6 px-6 sm:px-8 lg:px-12">
         {/* 標題區域 */}
-        <div className="text-center shrink-0">
+        <div className="text-center shrink-0 relative">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="absolute top-0 right-0 p-2 text-slate-400 hover:text-slate-300 transition-colors"
+            title="設定"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
           <h1 className="text-4xl font-bold tracking-tight text-slate-100 mb-1">
             晶晶體
           </h1>
@@ -239,6 +301,21 @@ export default function Home() {
             {getStatusText()}
           </span>
         </div>
+
+        {/* API Key 提示 */}
+        {status === "no-api-key" && (
+          <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-md p-4 text-center shrink-0">
+            <p className="text-yellow-300 text-sm mb-3">
+              請先設定 OpenAI API Key 才能使用語音轉文字功能
+            </p>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="px-6 py-2.5 bg-yellow-700/50 hover:bg-yellow-700/70 text-yellow-100 font-medium rounded-md border border-yellow-600/50 hover:border-yellow-500/50 transition-all duration-200 text-sm"
+            >
+              開啟設定
+            </button>
+          </div>
+        )}
 
         {/* 錄音控制區域 */}
         <div className="w-full shrink-0">
@@ -509,6 +586,75 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* 設定面板 */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-slate-100">設定</h2>
+              <button
+                onClick={() => {
+                  setIsSettingsOpen(false);
+                  setApiKeyInput("");
+                }}
+                className="text-slate-400 hover:text-slate-300 transition-colors"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  OpenAI API Key
+                </label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="sk-..."
+                  className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-md text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-600 focus:border-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSaveApiKey();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveApiKey}
+                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium rounded-md border border-slate-600 hover:border-slate-500 transition-all duration-200"
+                >
+                  套用
+                </button>
+                <button
+                  onClick={() => {
+                    setIsSettingsOpen(false);
+                    setApiKeyInput("");
+                  }}
+                  className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 hover:text-slate-200 font-medium rounded-md border border-slate-700/50 hover:border-slate-600/50 transition-all duration-200"
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
