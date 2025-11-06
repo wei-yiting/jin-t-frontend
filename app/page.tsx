@@ -19,6 +19,9 @@ export default function Home() {
   const [resultText, setResultText] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
+  const [selectedModel, setSelectedModel] = useState<string>(
+    "gpt-4o-mini-transcribe"
+  );
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const uploadAudioFileExtensionRef = useRef<string | null>(null);
@@ -123,6 +126,7 @@ export default function Home() {
     }
 
     formData.append("openai_api_key", localStorage.getItem("openai_api_key")!);
+    formData.append("model_name", selectedModel);
 
     try {
       const response = await fetch("http://localhost:8001/transcribe", {
@@ -474,11 +478,11 @@ export default function Home() {
         </div>
 
         {/* 轉錄按鈕區域 */}
-        <div className="w-full shrink-0">
+        <div className="w-full shrink-0 flex items-center gap-3">
           <button
             onClick={handleTranscribeAudio}
             disabled={!audioBlob || status === "transcribing"}
-            className="w-full px-6 py-3.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800/50 disabled:cursor-not-allowed disabled:text-slate-500 text-slate-100 font-medium rounded-md border border-slate-600 hover:border-slate-500 disabled:border-slate-700/50 transition-all duration-200 text-base flex items-center justify-center gap-2"
+            className="flex-1 px-6 py-3.5 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800/50 disabled:cursor-not-allowed disabled:text-slate-500 text-slate-100 font-medium rounded-md border border-slate-600 hover:border-slate-500 disabled:border-slate-700/50 transition-all duration-200 text-base flex items-center justify-center gap-2"
           >
             {status === "transcribing" ? (
               <svg
@@ -519,6 +523,17 @@ export default function Home() {
             )}
             語音轉文字
           </button>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            disabled={status === "transcribing"}
+            className="px-4 py-3.5 bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-100 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-600 focus:border-transparent"
+          >
+            <option value="gpt-4o-mini-transcribe">
+              GPT-4o Mini Transcribe
+            </option>
+            <option value="gpt-4o-transcribe">GPT-4o Transcribe</option>
+          </select>
         </div>
 
         {/* 轉錄結果 */}
