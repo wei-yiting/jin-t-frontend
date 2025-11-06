@@ -1,64 +1,141 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+
+type Status =
+  | "unsupported"
+  | "idle"
+  | "recording"
+  | "audio-captured"
+  | "transcribing";
 
 export default function Home() {
+  const [status, setStatus] = useState<Status>("unsupported");
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [transcription, setTranscription] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices) {
+      setStatus("unsupported");
+    } else {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        mediaRecorderRef.current = new MediaRecorder(stream);
+      });
+      setStatus("idle");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mediaRecorderRef.current) {
+      const handleDataAvailable = (event: BlobEvent) => {
+        chunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.addEventListener(
+        "dataavailable",
+        handleDataAvailable
+      );
+
+      return () => {
+        mediaRecorderRef.current?.removeEventListener(
+          "dataavailable",
+          handleDataAvailable
+        );
+      };
+    }
+  }, [mediaRecorderRef.current]);
+
+  useEffect(() => {
+    if (mediaRecorderRef.current) {
+      const handleStop = () => {
+        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setAudioBlob(audioBlob);
+        chunksRef.current = [];
+      };
+
+      mediaRecorderRef.current.addEventListener("stop", handleStop);
+
+      return () => {
+        mediaRecorderRef.current?.removeEventListener("stop", handleStop);
+      };
+    }
+  }, [mediaRecorderRef.current]);
+
+  useEffect(() => {
+    if (audioBlob) {
+      setAudioUrl(URL.createObjectURL(audioBlob));
+
+      return () => {
+        URL.revokeObjectURL(audioUrl ?? "");
+        setAudioUrl(null);
+      };
+    }
+  }, [audioBlob]);
+
+  const handleStartRecording = () => {
+    if (!mediaRecorderRef.current) {
+      return;
+    }
+    mediaRecorderRef.current.start();
+    setStatus("recording");
+  };
+
+  const handleStopRecording = () => {
+    if (!mediaRecorderRef.current) {
+      return;
+    }
+    mediaRecorderRef.current.stop();
+    setStatus("audio-captured");
+  };
+
+  const handleTranscribeAudio = async () => {
+    if (!audioBlob) {
+      return;
+    }
+
+    setStatus("transcribing");
+
+    const formData = new FormData();
+    formData.append("audio_file", audioBlob, "recording.webm");
+    try {
+      const response = await fetch("http://localhost:8001/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      setTranscription(data.transcription);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setStatus("idle");
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <p>Status: {status}</p>
+        {audioUrl && <audio src={audioUrl} controls />}
+
+        {status === "idle" && (
+          <button onClick={handleStartRecording}>Start Recording</button>
+        )}
+        {status === "recording" && (
+          <button onClick={handleStopRecording}>Stop Recording</button>
+        )}
+        {audioBlob && (
+          <button onClick={handleTranscribeAudio}>Transcribe Audio</button>
+        )}
+        {status === "transcribing" && <p>Transcribing...</p>}
+        {
+          <p>
+            Transcription:{" "}
+            {transcription ? transcription : "No transcription available"}
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        }
       </main>
     </div>
   );
