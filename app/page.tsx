@@ -262,48 +262,49 @@ export default function Home() {
   return (
     <div className="h-screen flex items-center justify-center bg-linear-to-br from-slate-950 via-slate-800 to-slate-950 font-sans overflow-hidden">
       <main className="h-full w-full max-w-5xl flex flex-col gap-4 py-6 px-6 sm:px-8 lg:px-12">
-        {/* 標題區域 */}
-        <div className="text-center shrink-0 relative">
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="absolute top-0 right-0 p-2 text-slate-400 hover:text-slate-300 transition-colors"
-            title="設定"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+        <div className="flex items-center justify-between shrink-0">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-slate-100">
+              晶晶體
+            </h1>
+            <p className="text-xs text-slate-400 mt-1.5">
+              中英夾雜語音輸入工具
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3">
+            <span className="text-xs font-medium text-slate-400">狀態：</span>
+            <span
+              className={`px-3 py-1.5 rounded-md text-xs font-medium ${getStatusColor()}`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </button>
-          <h1 className="text-4xl font-bold tracking-tight text-slate-100 mb-1">
-            晶晶體
-          </h1>
-          <p className="text-sm text-slate-400">中英夾雜語音輸入工具</p>
-        </div>
-
-        {/* 狀態顯示 */}
-        <div className="flex items-center justify-center gap-3 shrink-0">
-          <span className="text-sm font-medium text-slate-400">狀態：</span>
-          <span
-            className={`px-3 py-1.5 rounded-md text-xs font-medium ${getStatusColor()}`}
-          >
-            {getStatusText()}
-          </span>
+              {getStatusText()}
+            </span>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 text-slate-400 hover:text-slate-300 transition-colors"
+              title="設定"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* API Key 提示 */}
@@ -323,9 +324,6 @@ export default function Home() {
 
         {/* 錄音控制區域 */}
         <div className="w-full shrink-0">
-          <label className="block text-sm font-medium text-slate-400 mb-1.5">
-            輸入的音檔：
-          </label>
           <div className="flex items-center gap-3">
             {/* 音訊播放器 */}
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-md p-3 flex-1">
