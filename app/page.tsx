@@ -129,10 +129,13 @@ export default function Home() {
     formData.append("model_name", selectedModel);
 
     try {
-      const response = await fetch("http://localhost:8001/transcribe", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/transcribe`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
       const data = await response.json();
       const newTranscription = data.transcription;
 
