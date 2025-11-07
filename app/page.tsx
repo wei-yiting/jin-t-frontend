@@ -67,7 +67,8 @@ export default function Home() {
   useEffect(() => {
     if (mediaRecorderRef.current) {
       const handleStop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const audioMimeType = mediaRecorderRef.current!.mimeType;
+        const audioBlob = new Blob(chunksRef.current, { type: audioMimeType });
         setAudioBlob(audioBlob);
         chunksRef.current = [];
       };
