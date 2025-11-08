@@ -11,6 +11,34 @@ type Status =
   | "transcribing"
   | "finished-transcription";
 
+const getFileExtensionFromMimeType = (mimeType: string) => {
+  if (!mimeType || !mimeType.startsWith("audio/")) {
+    return "dat";
+  }
+
+  if (mimeType.includes("webm")) {
+    return "webm";
+  }
+
+  if (mimeType.includes("wav")) {
+    return "wav";
+  }
+
+  if (mimeType.includes("mp3") || mimeType.includes("mpeg")) {
+    return "mp3";
+  }
+
+  if (mimeType.includes("ogg") || mimeType.includes("oga")) {
+    return "ogg";
+  }
+
+  if (mimeType.includes("m4a") || mimeType.includes("mp4")) {
+    return "m4a";
+  }
+
+  return "dat";
+};
+
 export default function Home() {
   const [status, setStatus] = useState<Status>("unsupported");
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -123,7 +151,13 @@ export default function Home() {
         "recording." + uploadAudioFileExtensionRef.current
       );
     } else {
-      formData.append("audio_file", audioBlob, "recording.webm");
+      formData.append(
+        "audio_file",
+        audioBlob,
+        `recording.${getFileExtensionFromMimeType(
+          mediaRecorderRef.current!.mimeType
+        )}`
+      );
     }
 
     formData.append("openai_api_key", localStorage.getItem("openai_api_key")!);
