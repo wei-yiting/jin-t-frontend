@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { ConfirmModal } from "../components/ConfirmModal";
 
 type Status =
   | "unsupported"
@@ -46,6 +47,8 @@ export default function Home() {
   const [isTextCopied, setIsTextCopied] = useState<boolean>(false);
   const [resultText, setResultText] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isResetConfirmModalOpen, setIsResetConfirmModalOpen] =
+    useState<boolean>(false);
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [selectedModel, setSelectedModel] = useState<string>(
     "gpt-4o-mini-transcribe"
@@ -198,12 +201,21 @@ export default function Home() {
   };
 
   const handleResetRecording = () => {
+    setIsResetConfirmModalOpen(true);
+  };
+
+  const handleConfirmReset = () => {
     setAudioBlob(null);
     setAudioUrl(null);
     setResultText("");
     chunksRef.current = [];
     uploadAudioFileExtensionRef.current = null;
     setStatus("idle");
+    setIsResetConfirmModalOpen(false);
+  };
+
+  const handleCancelReset = () => {
+    setIsResetConfirmModalOpen(false);
   };
 
   const handleUploadAudio = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -459,7 +471,7 @@ export default function Home() {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                重新錄音
+                重新開始
               </button>
             )}
             {status === "finished-transcription" && (
@@ -641,6 +653,14 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={isResetConfirmModalOpen}
+        message="重新開始將會移除現有錄音並清除所有文字結果，確認要重新開始嗎？"
+        onConfirm={handleConfirmReset}
+        onCancel={handleCancelReset}
+      />
 
       {/* 設定面板 */}
       {isSettingsOpen && (
