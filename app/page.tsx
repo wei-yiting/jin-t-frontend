@@ -175,7 +175,7 @@ export default function Home() {
         }
       );
       const data = await response.json();
-      const newTranscription = data.transcription;
+      const newTranscription = data.transcript;
 
       // 如果已經有轉錄結果，則追加；否則設置新結果
       setResultText((prev) => {
