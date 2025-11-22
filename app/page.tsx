@@ -40,6 +40,10 @@ const getFileExtensionFromMimeType = (mimeType: string) => {
   return "dat";
 };
 
+const calculateAudioDuration = (startRecordingTimestamp: number): string => {
+  return ((Date.now() - startRecordingTimestamp) / 1000).toFixed(2);
+};
+
 export default function Home() {
   const [status, setStatus] = useState<Status>("unsupported");
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -56,6 +60,7 @@ export default function Home() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const uploadAudioFileExtensionRef = useRef<string | null>(null);
+  const startRecordingTimeRef = useRef<number | null>(null);
 
   useEffect(() => {
     const storedApiKey = localStorage.getItem("openai_api_key");
@@ -127,6 +132,7 @@ export default function Home() {
     if (!mediaRecorderRef.current) {
       return;
     }
+    startRecordingTimeRef.current = Date.now();
     mediaRecorderRef.current.start();
     setStatus("recording");
   };
@@ -165,6 +171,12 @@ export default function Home() {
 
     formData.append("openai_api_key", localStorage.getItem("openai_api_key")!);
     formData.append("model_name", selectedModel);
+    if (startRecordingTimeRef.current) {
+      formData.append(
+        "audio_duration",
+        calculateAudioDuration(startRecordingTimeRef.current)
+      );
+    }
 
     try {
       const response = await fetch(
@@ -177,7 +189,6 @@ export default function Home() {
       const data = await response.json();
       const newTranscription = data.transcript;
 
-      // 如果已經有轉錄結果，則追加；否則設置新結果
       setResultText((prev) => {
         if (prev) {
           return prev + "\n" + newTranscription;
@@ -197,6 +208,7 @@ export default function Home() {
       return;
     }
     mediaRecorderRef.current.start();
+    startRecordingTimeRef.current = Date.now();
     setStatus("recording");
   };
 
@@ -210,6 +222,7 @@ export default function Home() {
     setResultText("");
     chunksRef.current = [];
     uploadAudioFileExtensionRef.current = null;
+    startRecordingTimeRef.current = null;
     setStatus("idle");
     setIsResetConfirmModalOpen(false);
   };
