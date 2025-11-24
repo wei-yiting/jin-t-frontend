@@ -1,0 +1,127 @@
+import { useState, useRef, useEffect, ReactNode } from "react";
+import { TRANSCRIBE_MODES } from "@/constants";
+import { TranscribeMode } from "@/types";
+import {
+  FastModeIcon,
+  StandardModeIcon,
+  RefinedModeIcon,
+  ChevronDownIcon,
+  CheckIcon,
+} from "@/lib/icons";
+
+type TranscribeModeSelectorProps = {
+  value: TranscribeMode;
+  onModeChange: (mode: TranscribeMode) => void;
+  disabled?: boolean;
+};
+
+const MODE_DESCRIPTIONS: Record<TranscribeMode, string> = {
+  fast: "最快速，但可能缺少標點符號",
+  standard: "平衡品質與速度，適合一般使用",
+  refined: "去除冗贅字詞且標點準確，但回覆時間較長",
+};
+
+const MODE_ICONS: Record<TranscribeMode, ReactNode> = {
+  fast: <FastModeIcon />,
+  standard: <StandardModeIcon />,
+  refined: <RefinedModeIcon />,
+};
+
+export default function TranscribeModeSelector({
+  value,
+  onModeChange,
+  disabled,
+}: TranscribeModeSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedMode = TRANSCRIBE_MODES.find(
+    (mode) => mode.value === value
+  ) ?? { value, label: "" };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleSelect = (mode: TranscribeMode) => {
+    onModeChange(mode);
+    setIsOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="w-full sm:w-72">
+      <label className="block text-xs font-medium text-slate-400 mb-1">
+        轉錄模式
+      </label>
+      <div className="relative">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => setIsOpen((prev) => !prev)}
+          className={`w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-900/40 text-left flex items-center justify-between text-slate-100 transition-colors ${
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:border-slate-500"
+          }`}
+        >
+          <span className="flex items-center gap-2 text-sm">
+            {MODE_ICONS[value]}
+            {selectedMode.label}
+          </span>
+          <span
+            className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
+          >
+            <ChevronDownIcon />
+          </span>
+        </button>
+
+        {isOpen && (
+          <div className="absolute z-10 mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+            {TRANSCRIBE_MODES.map((mode) => {
+              const modeValue = mode.value as TranscribeMode;
+              const isActive = value === modeValue;
+
+              return (
+                <button
+                  type="button"
+                  key={mode.value}
+                  onClick={() => handleSelect(modeValue)}
+                  className={`w-full px-3 py-2 flex items-start gap-3 text-left transition-colors ${
+                    isActive
+                      ? "bg-slate-800/60 text-slate-100"
+                      : "text-slate-200 hover:bg-slate-800/40"
+                  }`}
+                >
+                  <span className="mt-0.5">{MODE_ICONS[modeValue]}</span>
+                  <span className="flex-1">
+                    <span className="block text-sm font-medium">
+                      {mode.label}
+                    </span>
+                    <span className="block text-xs text-slate-400">
+                      {MODE_DESCRIPTIONS[modeValue]}
+                    </span>
+                  </span>
+                  {isActive && <CheckIcon />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

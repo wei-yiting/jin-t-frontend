@@ -3,9 +3,9 @@ import { TranscribeMode } from "@/types";
 export const DEFAULT_MODE: TranscribeMode = "fast";
 
 export const TRANSCRIBE_MODES = [
-  { value: "fast", label: "Fast Mode" },
-  { value: "standard", label: "Standard Mode" },
-  { value: "refined", label: "Refined Mode" },
+  { value: "fast", label: "快速模式" },
+  { value: "standard", label: "標準模式" },
+  { value: "refined", label: "潤稿模式" },
 ] as const;
 
 // TODO: Remove when supabae db store api key
