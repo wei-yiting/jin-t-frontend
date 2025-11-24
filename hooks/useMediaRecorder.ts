@@ -3,20 +3,27 @@ import { RecordingStatus } from "@/types";
 import { useRecordingTimer } from "./useRecordingTimer";
 
 interface UseMediaRecorderProps {
-  onStop?: (blob: Blob) => void;
-  onDataAvailable?: (data: Blob) => void;
+  onRecordingCompleted?: (blob: Blob) => void;
+  onChunkAvailable?: (data: Blob) => void;
 }
 
 export const useMediaRecorder = ({
-  onStop,
-  onDataAvailable,
+  onRecordingCompleted,
+  onChunkAvailable,
 }: UseMediaRecorderProps = {}) => {
   const [status, setStatus] = useState<RecordingStatus>("idle");
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
   const [error, setError] = useState<Error | null>(null);
-  const { duration, startTimer, stopTimer, resetTimer } = useRecordingTimer();
+  const {
+    duration,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    stopTimer,
+    resetTimer,
+  } = useRecordingTimer();
 
   const chunksRef = useRef<BlobPart[]>([]);
 
@@ -32,29 +39,28 @@ export const useMediaRecorder = ({
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunksRef.current.push(event.data);
-          onDataAvailable?.(event.data);
+          onChunkAvailable?.(event.data);
         }
       };
 
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
-        onStop?.(blob);
+        onRecordingCompleted?.(blob);
         chunksRef.current = [];
       };
 
       setMediaRecorder(recorder);
       return recorder;
     } catch (err) {
-      const error =
+      const normalizedError =
         err instanceof Error
           ? err
           : new Error("Failed to initialize media recorder");
-      setError(error);
+      setError(normalizedError);
       return null;
     }
-  }, [onStop, onDataAvailable]);
+  }, [onRecordingCompleted, onChunkAvailable]);
 
-  // Initialize on mount
   useEffect(() => {
     initializeRecorder();
   }, [initializeRecorder]);
@@ -66,13 +72,29 @@ export const useMediaRecorder = ({
     const recorder = mediaRecorder || (await initializeRecorder());
 
     if (recorder && recorder.state === "inactive") {
-      recorder.start(100); // Collect data every 100ms for waveform
+      recorder.start(100); // Collect data every 100ms for smoother waveform
       setStatus("recording");
       startTimer();
     }
-  }, [mediaRecorder, initializeRecorder, startTimer]);
+  }, [initializeRecorder, mediaRecorder, startTimer]);
 
-  const stopRecording = useCallback(() => {
+  const pauseRecording = useCallback(() => {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      mediaRecorder.pause();
+      pauseTimer();
+      setStatus("paused");
+    }
+  }, [mediaRecorder, pauseTimer]);
+
+  const resumeRecording = useCallback(() => {
+    if (mediaRecorder && mediaRecorder.state === "paused") {
+      mediaRecorder.resume();
+      resumeTimer();
+      setStatus("recording");
+    }
+  }, [mediaRecorder, resumeTimer]);
+
+  const completeRecording = useCallback(() => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       stopTimer();
       mediaRecorder.stop();
@@ -82,13 +104,11 @@ export const useMediaRecorder = ({
 
   const discardRecording = useCallback(() => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      // Remove onstop listener temporarily to prevent onStop callback
       const originalOnStop = mediaRecorder.onstop;
       mediaRecorder.onstop = null;
 
       mediaRecorder.stop();
 
-      // Restore listener and cleanup
       setTimeout(() => {
         if (mediaRecorder) mediaRecorder.onstop = originalOnStop;
         chunksRef.current = [];
@@ -96,13 +116,20 @@ export const useMediaRecorder = ({
 
       setStatus("idle");
       resetTimer();
+    } else {
+      // If recorder already inactive, ensure timer/state reset
+      setStatus("idle");
+      resetTimer();
+      chunksRef.current = [];
     }
   }, [mediaRecorder, resetTimer]);
 
   return {
     status,
     startRecording,
-    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    completeRecording,
     discardRecording,
     error,
     duration,

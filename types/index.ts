@@ -1,6 +1,6 @@
 export type TranscribeMode = "fast" | "standard" | "refined";
 
-export type RecordingStatus = "idle" | "recording" | "transcribing";
+export type RecordingStatus = "idle" | "recording" | "paused";
 
 export interface TranscribeRequest {
   audio_file: Blob;
