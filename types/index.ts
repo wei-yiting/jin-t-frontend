@@ -1,6 +1,13 @@
 export type TranscribeMode = "fast" | "standard" | "refined";
 
-export type RecordingStatus = "idle" | "recording" | "paused";
+// Application-level status (complete user flow)
+export type AppStatus =
+  | "idle" // Initial state, can start recording
+  | "recording" // Currently recording
+  | "paused" // Recording paused
+  | "audio-ready" // Audio ready, waiting for transcription
+  | "transcribing" // Transcribing audio
+  | "transcription-completed"; // Transcription completed, can continue or reset
 
 export interface TranscribeRequest {
   audio_file: Blob;

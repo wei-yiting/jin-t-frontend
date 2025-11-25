@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { RecordingStatus } from "@/types";
+import { useEffect, useRef, useCallback } from "react";
 import { useRecordingTimer } from "./useRecordingTimer";
 
 interface UseMediaRecorderProps {
@@ -11,11 +10,9 @@ export const useMediaRecorder = ({
   onRecordingCompleted,
   onChunkAvailable,
 }: UseMediaRecorderProps = {}) => {
-  const [status, setStatus] = useState<RecordingStatus>("idle");
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
-    null
-  );
-  const [error, setError] = useState<Error | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+
   const {
     duration,
     startTimer,
@@ -25,114 +22,96 @@ export const useMediaRecorder = ({
     resetTimer,
   } = useRecordingTimer();
 
-  const chunksRef = useRef<BlobPart[]>([]);
-
-  const initializeRecorder = useCallback(async () => {
-    try {
-      if (!navigator.mediaDevices) {
-        throw new Error("Browser does not support media devices");
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-          onChunkAvailable?.(event.data);
-        }
-      };
-
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
-        onRecordingCompleted?.(blob);
-        chunksRef.current = [];
-      };
-
-      setMediaRecorder(recorder);
-      return recorder;
-    } catch (err) {
-      const normalizedError =
-        err instanceof Error
-          ? err
-          : new Error("Failed to initialize media recorder");
-      setError(normalizedError);
-      return null;
-    }
-  }, [onRecordingCompleted, onChunkAvailable]);
-
   useEffect(() => {
-    initializeRecorder();
-  }, [initializeRecorder]);
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        mediaRecorderRef.current = new MediaRecorder(stream);
 
-  const startRecording = useCallback(async () => {
-    setError(null);
+        mediaRecorderRef.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            chunksRef.current.push(event.data);
+            onChunkAvailable?.(event.data);
+          }
+        };
+
+        mediaRecorderRef.current.onstop = () => {
+          const blob = new Blob(chunksRef.current, {
+            type: mediaRecorderRef.current?.mimeType ?? "",
+          });
+          onRecordingCompleted?.(blob);
+          chunksRef.current = [];
+        };
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+  }, [onChunkAvailable, onRecordingCompleted]);
+
+  const startRecording = useCallback(() => {
     chunksRef.current = [];
 
-    const recorder = mediaRecorder || (await initializeRecorder());
-
-    if (recorder && recorder.state === "inactive") {
-      recorder.start(100); // Collect data every 100ms for smoother waveform
-      setStatus("recording");
-      startTimer();
+    if (!mediaRecorderRef.current) {
+      return;
     }
-  }, [initializeRecorder, mediaRecorder, startTimer]);
+
+    mediaRecorderRef.current.start(100); // Collect data every 100ms for smoother waveform
+    startTimer();
+  }, [startTimer]);
 
   const pauseRecording = useCallback(() => {
-    if (mediaRecorder && mediaRecorder.state === "recording") {
-      mediaRecorder.pause();
-      pauseTimer();
-      setStatus("paused");
+    if (!mediaRecorderRef.current) {
+      return;
     }
-  }, [mediaRecorder, pauseTimer]);
+
+    mediaRecorderRef.current.pause();
+    pauseTimer();
+  }, [pauseTimer]);
 
   const resumeRecording = useCallback(() => {
-    if (mediaRecorder && mediaRecorder.state === "paused") {
-      mediaRecorder.resume();
-      resumeTimer();
-      setStatus("recording");
+    if (!mediaRecorderRef.current) {
+      return;
     }
-  }, [mediaRecorder, resumeTimer]);
+
+    mediaRecorderRef.current.resume();
+    resumeTimer();
+  }, [resumeTimer]);
 
   const completeRecording = useCallback(() => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      stopTimer();
-      mediaRecorder.stop();
-      setStatus("idle");
+    if (!mediaRecorderRef.current) {
+      return;
     }
-  }, [mediaRecorder, stopTimer]);
+
+    stopTimer();
+    mediaRecorderRef.current.stop();
+  }, [stopTimer]);
 
   const discardRecording = useCallback(() => {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      const originalOnStop = mediaRecorder.onstop;
-      mediaRecorder.onstop = null;
+    resetTimer();
 
-      mediaRecorder.stop();
-
-      setTimeout(() => {
-        if (mediaRecorder) mediaRecorder.onstop = originalOnStop;
-        chunksRef.current = [];
-      }, 0);
-
-      setStatus("idle");
-      resetTimer();
-    } else {
-      // If recorder already inactive, ensure timer/state reset
-      setStatus("idle");
-      resetTimer();
+    if (!mediaRecorderRef.current) {
       chunksRef.current = [];
+      return;
     }
-  }, [mediaRecorder, resetTimer]);
+
+    const originalOnStop = mediaRecorderRef.current.onstop;
+    mediaRecorderRef.current.onstop = null;
+    mediaRecorderRef.current.stop();
+
+    setTimeout(() => {
+      mediaRecorderRef.current!.onstop = originalOnStop;
+      chunksRef.current = [];
+    }, 0);
+  }, [resetTimer]);
 
   return {
-    status,
     startRecording,
     pauseRecording,
     resumeRecording,
     completeRecording,
     discardRecording,
-    error,
     duration,
-    mediaRecorder,
   };
 };

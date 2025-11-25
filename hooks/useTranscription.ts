@@ -40,11 +40,17 @@ export const useTranscription = () => {
     setError(null);
   }, []);
 
+  const setManualTranscription = useCallback((value: string) => {
+    setTranscriptionText(value);
+    setError(null);
+  }, []);
+
   return {
     isTranscribing,
     transcriptionText,
     error,
     transcribe,
     clearTranscription,
+    setTranscriptionText: setManualTranscription,
   };
 };

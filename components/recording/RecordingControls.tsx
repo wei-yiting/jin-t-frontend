@@ -1,4 +1,4 @@
-import { RecordingStatus } from "@/types";
+import { AppStatus } from "@/types";
 import WaveformAnimation from "../ui/WaveformAnimation";
 import PrimaryButton from "../buttons/PrimaryButton";
 import {
@@ -11,9 +11,8 @@ import {
 } from "@/lib/icons";
 
 type RecordingControlsProps = {
-  status: RecordingStatus;
+  appStatus: AppStatus;
   duration: number;
-  isTranscribing?: boolean;
   onStartRecording: () => void;
   onPauseRecording: () => void;
   onResumeRecording: () => void;
@@ -33,9 +32,8 @@ const formatDuration = (duration: number) => {
 };
 
 export default function RecordingControls({
-  status,
+  appStatus,
   duration,
-  isTranscribing,
   onStartRecording,
   onPauseRecording,
   onResumeRecording,
@@ -43,13 +41,18 @@ export default function RecordingControls({
   onDiscardRecording,
   onUploadAudio,
 }: RecordingControlsProps) {
-  const isIdle = status === "idle";
-  const isRecording = status === "recording";
-  const isPaused = status === "paused";
+  // Only show recording controls when in idle/recording/paused states
+  if (
+    appStatus !== "idle" &&
+    appStatus !== "recording" &&
+    appStatus !== "paused"
+  ) {
+    return null;
+  }
 
   return (
     <div className="w-full">
-      {isIdle && (
+      {appStatus === "idle" && (
         <div className="flex flex-col sm:flex-row gap-3">
           <PrimaryButton
             onClick={onStartRecording}
@@ -69,49 +72,57 @@ export default function RecordingControls({
         </div>
       )}
 
-      {(isRecording || isPaused) && (
+      {(appStatus === "recording" || appStatus === "paused") && (
         <div className="flex flex-col gap-3 bg-slate-900/40 border border-slate-700/50 rounded-xl p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <WaveformAnimation isActive={isRecording} />
-              <span className="px-2 py-1 text-xs font-mono text-slate-200 bg-slate-800/70 rounded">
-                {formatDuration(duration)}
-              </span>
-            </div>
-            {isRecording ? (
-              <PrimaryButton
-                onClick={onPauseRecording}
-                label="暫停"
-                icon={<PauseIcon />}
-              />
-            ) : (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={onResumeRecording}
-                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 text-xs sm:text-sm font-medium transition-all flex items-center gap-2"
-                >
-                  <ResumeIcon />
-                  繼續錄音
-                </button>
+          <div className="flex items-center gap-2 mb-2">
+            <WaveformAnimation isActive={appStatus === "recording"} />
+            <span className="px-2 py-1 text-xs font-mono text-slate-200 bg-slate-800/70 rounded">
+              {formatDuration(duration)}
+            </span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            {appStatus === "recording" ? (
+              <>
+                <PrimaryButton
+                  onClick={onPauseRecording}
+                  label="暫停"
+                  icon={<PauseIcon />}
+                />
                 <PrimaryButton
                   onClick={onCompleteRecording}
-                  disabled={isTranscribing}
                   label="確認送出"
                   icon={<ConfirmIcon />}
                   variant="success"
                 />
-              </div>
+                <PrimaryButton
+                  onClick={onDiscardRecording}
+                  label="丟掉錄音"
+                  icon={<DiscardIcon />}
+                  variant="ghost"
+                />
+              </>
+            ) : (
+              <>
+                <PrimaryButton
+                  onClick={onResumeRecording}
+                  label="繼續錄音"
+                  icon={<ResumeIcon />}
+                />
+                <PrimaryButton
+                  onClick={onCompleteRecording}
+                  label="確認送出"
+                  icon={<ConfirmIcon />}
+                  variant="success"
+                />
+                <PrimaryButton
+                  onClick={onDiscardRecording}
+                  label="丟掉錄音"
+                  icon={<DiscardIcon />}
+                  variant="ghost"
+                />
+              </>
             )}
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <PrimaryButton
-              onClick={onDiscardRecording}
-              label="丟掉錄音"
-              icon={<DiscardIcon />}
-              variant="ghost"
-            />
           </div>
         </div>
       )}

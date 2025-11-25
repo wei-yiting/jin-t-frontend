@@ -9,9 +9,7 @@ class HttpClient {
   constructor(baseUrl: string) {
     this.client = axios.create({
       baseURL: baseUrl,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      timeout: 60000, // 60 seconds for file uploads
     });
 
     // Response interceptor for error handling
@@ -49,21 +47,28 @@ class HttpClient {
   async post<T>(
     endpoint: string,
     body: FormData | object,
-    config: AxiosRequestConfig = {}
+    config?: AxiosRequestConfig
   ): Promise<T> {
     const isFormData = body instanceof FormData;
 
-    const requestConfig: AxiosRequestConfig = {
-      ...config,
-      headers: {
-        ...config.headers,
-        // Axios automatically sets Content-Type to multipart/form-data when body is FormData
-        // so we only need to set it for JSON if it's not FormData
-        ...(!isFormData && { "Content-Type": "application/json" }),
-      },
-    };
+    // For FormData, don't set Content-Type at all - axios will set it with boundary
+    // For JSON, explicitly set Content-Type
+    const headers = isFormData
+      ? config?.headers
+      : {
+          "Content-Type": "application/json",
+          ...config?.headers,
+        };
 
-    const response = await this.client.post<T>(endpoint, body, requestConfig);
+    const response = await this.client.post<T>(endpoint, body, {
+      ...config,
+      headers,
+    });
+    return response.data;
+  }
+
+  async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.client.get<T>(endpoint, config);
     return response.data;
   }
 }
