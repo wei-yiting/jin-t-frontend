@@ -1,13 +1,7 @@
 import { useState, useRef, useEffect, ReactNode } from "react";
 import { TRANSCRIBE_MODES } from "@/constants";
 import { TranscribeMode } from "@/types";
-import {
-  FastModeIcon,
-  StandardModeIcon,
-  RefinedModeIcon,
-  ChevronDownIcon,
-  CheckIcon,
-} from "@/lib/icons";
+import { Zap, FileText, Sparkles, ChevronDown, Check } from "lucide-react";
 
 type TranscribeModeSelectorProps = {
   value: TranscribeMode;
@@ -22,9 +16,9 @@ const MODE_DESCRIPTIONS: Record<TranscribeMode, string> = {
 };
 
 const MODE_ICONS: Record<TranscribeMode, ReactNode> = {
-  fast: <FastModeIcon />,
-  standard: <StandardModeIcon />,
-  refined: <RefinedModeIcon />,
+  fast: <Zap className="w-4 h-4 text-emerald-400" />,
+  standard: <FileText className="w-4 h-4 text-sky-400" />,
+  refined: <Sparkles className="w-4 h-4 text-violet-400" />,
 };
 
 export default function TranscribeModeSelector({
@@ -82,11 +76,11 @@ export default function TranscribeModeSelector({
             {MODE_ICONS[value]}
             {selectedMode.label}
           </span>
-          <span
-            className={`transition-transform ${isOpen ? "rotate-180" : ""}`}
-          >
-            <ChevronDownIcon />
-          </span>
+          <ChevronDown
+            className={`w-4 h-4 transition-transform ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
         </button>
 
         {isOpen && (
@@ -115,7 +109,7 @@ export default function TranscribeModeSelector({
                       {MODE_DESCRIPTIONS[modeValue]}
                     </span>
                   </span>
-                  {isActive && <CheckIcon />}
+                  {isActive && <Check className="w-4 h-4 text-emerald-400" />}
                 </button>
               );
             })}

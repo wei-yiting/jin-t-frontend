@@ -17,11 +17,12 @@ export default function TranscriptionResult({
         <span className="text-sm font-medium text-slate-200">文字結果</span>
         {hasText && <CopyButton text={text} />}
       </div>
-      <div className="relative flex-1 bg-slate-900/40 border border-slate-800 rounded-xl p-3">
+      <div className="relative flex-1 bg-slate-800/50 rounded-xl p-4">
         <textarea
           value={text}
           onChange={(event) => onChange?.(event.target.value)}
-          className="w-full h-full bg-transparent text-slate-100 text-sm leading-relaxed outline-none resize-none"
+          className="w-full h-full bg-transparent text-slate-100 text-sm leading-relaxed outline-none resize-none placeholder-slate-500"
+          placeholder="轉錄結果將顯示在此處..."
         />
       </div>
     </div>

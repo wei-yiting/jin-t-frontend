@@ -1,6 +1,5 @@
 import PrimaryButton from "../buttons/PrimaryButton";
-import IconButton from "../buttons/IconButton";
-import { CloseIcon, ConfirmIcon, DiscardIcon } from "@/lib/icons";
+import { X, Check } from "lucide-react";
 
 type SettingsModalProps = {
   isOpen: boolean;
@@ -22,12 +21,13 @@ export default function SettingsModal({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-xl relative">
-        <IconButton
+        <button
           onClick={onClose}
-          icon={<CloseIcon />}
-          ariaLabel="關閉設定"
-          className="absolute top-4 right-4"
-        />
+          aria-label="關閉設定"
+          className="absolute top-4 right-4 p-2 rounded-lg hover:bg-slate-800 transition-all text-slate-400 hover:text-slate-200"
+        >
+          <X className="w-4 h-4" />
+        </button>
 
         <h2 className="text-lg font-semibold text-slate-100 mb-4">設定</h2>
 
@@ -48,13 +48,13 @@ export default function SettingsModal({
           <PrimaryButton
             onClick={onSave}
             label="套用"
-            icon={<ConfirmIcon />}
+            icon={<Check className="w-4 h-4" />}
             className="flex-1"
           />
           <PrimaryButton
             onClick={onClose}
             label="取消"
-            icon={<DiscardIcon />}
+            icon={<X className="w-4 h-4" />}
             variant="ghost"
           />
         </div>

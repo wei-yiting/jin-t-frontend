@@ -7,7 +7,8 @@ export type AppStatus =
   | "paused" // Recording paused
   | "audio-ready" // Audio ready, waiting for transcription
   | "transcribing" // Transcribing audio
-  | "transcription-completed"; // Transcription completed, can continue or reset
+  | "transcription-completed" // Transcription completed, can continue or reset
+  | "transcription-error"; // Transcription failed, can retry or re-record
 
 export interface TranscribeRequest {
   audio_file: Blob;

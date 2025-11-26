@@ -2,16 +2,16 @@ import { useEffect, useRef, useCallback } from "react";
 import { useRecordingTimer } from "./useRecordingTimer";
 
 interface UseMediaRecorderProps {
-  onRecordingCompleted?: (blob: Blob) => void;
-  onChunkAvailable?: (data: Blob) => void;
+  onRecordingComplete: (blob: Blob, duration: number) => void;
 }
 
 export const useMediaRecorder = ({
-  onRecordingCompleted,
-  onChunkAvailable,
-}: UseMediaRecorderProps = {}) => {
+  onRecordingComplete,
+}: UseMediaRecorderProps) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const finalDurationRef = useRef<number>(0); // Store duration when recording completes
 
   const {
     duration,
@@ -28,29 +28,28 @@ export const useMediaRecorder = ({
         const stream = await navigator.mediaDevices.getUserMedia({
           audio: true,
         });
+        streamRef.current = stream;
         mediaRecorderRef.current = new MediaRecorder(stream);
 
         mediaRecorderRef.current.ondataavailable = (event) => {
           if (event.data.size > 0) {
             chunksRef.current.push(event.data);
-            onChunkAvailable?.(event.data);
           }
         };
 
         mediaRecorderRef.current.onstop = () => {
-          const blob = new Blob(chunksRef.current, {
-            type: mediaRecorderRef.current?.mimeType ?? "",
-          });
-          onRecordingCompleted?.(blob);
+          const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
+          const blob = new Blob(chunksRef.current, { type: mimeType });
+          onRecordingComplete?.(blob, finalDurationRef.current);
           chunksRef.current = [];
         };
       } catch (err) {
         console.error(err);
       }
     })();
-  }, [onChunkAvailable, onRecordingCompleted]);
+  }, [onRecordingComplete]);
 
-  const startRecording = useCallback(() => {
+  const startMediaRecorder = useCallback(() => {
     chunksRef.current = [];
 
     if (!mediaRecorderRef.current) {
@@ -61,7 +60,7 @@ export const useMediaRecorder = ({
     startTimer();
   }, [startTimer]);
 
-  const pauseRecording = useCallback(() => {
+  const pauseMediaRecorder = useCallback(() => {
     if (!mediaRecorderRef.current) {
       return;
     }
@@ -70,7 +69,7 @@ export const useMediaRecorder = ({
     pauseTimer();
   }, [pauseTimer]);
 
-  const resumeRecording = useCallback(() => {
+  const resumeMediaRecorder = useCallback(() => {
     if (!mediaRecorderRef.current) {
       return;
     }
@@ -79,16 +78,17 @@ export const useMediaRecorder = ({
     resumeTimer();
   }, [resumeTimer]);
 
-  const completeRecording = useCallback(() => {
+  const stopMediaRecorder = useCallback(() => {
     if (!mediaRecorderRef.current) {
       return;
     }
 
-    stopTimer();
+    // Get duration from stopTimer and store it for use in onstop callback
+    finalDurationRef.current = stopTimer();
     mediaRecorderRef.current.stop();
   }, [stopTimer]);
 
-  const discardRecording = useCallback(() => {
+  const discardMediaRecorder = useCallback(() => {
     resetTimer();
 
     if (!mediaRecorderRef.current) {
@@ -106,12 +106,23 @@ export const useMediaRecorder = ({
     }, 0);
   }, [resetTimer]);
 
+  // Get preview blob from current chunks (used when paused)
+  const getPreviewBlob = useCallback((): Blob | null => {
+    if (chunksRef.current.length === 0) {
+      return null;
+    }
+    const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
+    return new Blob(chunksRef.current, { type: mimeType });
+  }, []);
+
   return {
-    startRecording,
-    pauseRecording,
-    resumeRecording,
-    completeRecording,
-    discardRecording,
+    startMediaRecorder,
+    pauseMediaRecorder,
+    resumeMediaRecorder,
+    stopMediaRecorder,
+    discardMediaRecorder,
     duration,
+    mediaStreamRef: streamRef,
+    getPreviewBlob,
   };
 };

@@ -7,6 +7,7 @@ import TranscriptionResult from "@/components/transcription/TranscriptionResult"
 import SettingsModal from "@/components/settings/SettingsModal";
 import TranscribeModeSelector from "@/components/transcription/TranscribeModeSelector";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import { useMediaRecorder } from "@/hooks/useMediaRecorder";
 import { useAudioBlob } from "@/hooks/useAudioBlob";
 import { useTranscription } from "@/hooks/useTranscription";
@@ -20,6 +21,7 @@ const NO_KEY_MESSAGE = "請先設定 OpenAI API Key 才能使用轉錄功能。"
 
 export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [storedApiKey, setStoredApiKey] = useState<string | null>(null);
   const [isUnsupported, setIsUnsupported] = useState(false);
@@ -27,22 +29,14 @@ export default function Home() {
     useState<TranscribeMode>(DEFAULT_MODE);
   const [appStatus, setAppStatus] = useState<AppStatus>("idle");
 
-  const { audioBlob, setAudioBlob, handleUploadAudio } = useAudioBlob();
-  const handleRecordingCompleted = useCallback(
-    (blob: Blob) => {
-      setAudioBlob(blob);
-    },
-    [setAudioBlob]
-  );
-
   const {
-    startRecording,
-    pauseRecording,
-    resumeRecording,
-    completeRecording,
-    discardRecording,
-    duration,
-  } = useMediaRecorder({ onRecordingCompleted: handleRecordingCompleted });
+    audioBlob,
+    setAudioBlob,
+    retryBlob,
+    setRetryBlob,
+    handleUploadAudio,
+    clearBlob,
+  } = useAudioBlob();
 
   const {
     transcriptionText,
@@ -51,6 +45,65 @@ export default function Home() {
     setTranscriptionText,
     clearTranscription,
   } = useTranscription();
+
+  // Transcribe the given blob (shared logic for recording and upload)
+  const transcribeAudioBlob = useCallback(
+    async (blob: Blob, duration?: number) => {
+      // Check if API key is set// Check if API key is set
+      if (!storedApiKey) {
+        handleOpenSettings();
+        return;
+      }
+
+      try {
+        setAppStatus("transcribing");
+        await transcribe({
+          audio_file: blob,
+          openai_api_key: storedApiKey!,
+          transcribe_mode: transcribeMode,
+          audio_duration:
+            duration && duration > 0 ? duration.toFixed(2) : undefined,
+        });
+        setAppStatus("transcription-completed");
+        clearBlob();
+      } catch (error) {
+        console.error("Transcription failed:", error);
+        setRetryBlob(blob);
+        setAppStatus("transcription-error");
+      }
+    },
+    [storedApiKey, transcribeMode, transcribe, setRetryBlob, clearBlob]
+  );
+
+  // Called by useMediaRecorder when recording is complete
+  const handleRecordingCompletedAndTranscribe = useCallback(
+    async (blob: Blob, duration: number) => {
+      setAudioBlob(blob);
+
+      // If no API key, just save the blob and wait
+      if (!storedApiKey) {
+        setAppStatus("audio-ready");
+        return;
+      }
+
+      // Otherwise, immediately start transcribing
+      await transcribeAudioBlob(blob, duration);
+    },
+    [setAudioBlob, storedApiKey, transcribeAudioBlob]
+  );
+
+  const {
+    startMediaRecorder,
+    pauseMediaRecorder,
+    resumeMediaRecorder,
+    stopMediaRecorder,
+    discardMediaRecorder,
+    duration,
+    mediaStreamRef,
+    getPreviewBlob,
+  } = useMediaRecorder({
+    onRecordingComplete: handleRecordingCompletedAndTranscribe,
+  });
 
   useEffect(() => {
     if (!navigator.mediaDevices) {
@@ -80,88 +133,84 @@ export default function Home() {
     setIsSettingsOpen(false);
   };
 
-  const handleTranscribeAudio = useCallback(async () => {
-    if (!audioBlob || appStatus === "transcribing" || !storedApiKey) {
-      return;
-    }
-
-    setAppStatus("transcribing");
-
-    try {
-      await transcribe({
-        audio_file: audioBlob,
-        openai_api_key: storedApiKey,
-        transcribe_mode: transcribeMode,
-        audio_duration: duration > 0 ? duration.toFixed(2) : undefined,
-      });
-      // Success: move to completed state
-      setAppStatus("transcription-completed");
-      setAudioBlob(null);
-    } catch (error) {
-      // Error: go back to audio-ready state to allow retry
-      console.error("Transcription failed:", error);
-      setAppStatus("audio-ready");
-    }
-  }, [
-    audioBlob,
-    appStatus,
-    storedApiKey,
-    transcribeMode,
-    duration,
-    transcribe,
-    setAudioBlob,
-  ]);
-
   const handleCompleteRecording = useCallback(() => {
-    if (!storedApiKey) {
-      handleOpenSettings();
-      return;
-    }
+    // Stop recording (will trigger onRecordingComplete callback)
     if (appStatus === "recording" || appStatus === "paused") {
-      completeRecording();
-      setAppStatus("audio-ready");
+      stopMediaRecorder();
     }
-  }, [storedApiKey, appStatus, completeRecording]);
+  }, [storedApiKey, appStatus, stopMediaRecorder, handleOpenSettings]);
 
   const handleDiscardRecording = useCallback(() => {
-    discardRecording();
-    setAudioBlob(null);
+    discardMediaRecorder();
+    clearBlob();
     setAppStatus("idle");
-  }, [discardRecording, setAudioBlob]);
+  }, [discardMediaRecorder, clearBlob]);
 
   const handleStartRecording = useCallback(() => {
-    startRecording();
+    startMediaRecorder();
     setAppStatus("recording");
-  }, [startRecording]);
+  }, [startMediaRecorder]);
 
   const handlePauseRecording = useCallback(() => {
-    pauseRecording();
+    pauseMediaRecorder();
     setAppStatus("paused");
-  }, [pauseRecording]);
+  }, [pauseMediaRecorder]);
 
   const handleResumeRecording = useCallback(() => {
-    resumeRecording();
+    resumeMediaRecorder();
     setAppStatus("recording");
-  }, [resumeRecording]);
+  }, [resumeMediaRecorder]);
 
+  // Handle file upload - show preview first, let user decide to transcribe
   const handleUploadAudioWrapper = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      handleUploadAudio(event);
-      // After upload, audioBlob will be set, move to audio-ready
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const { success } = handleUploadAudio(event);
+      if (!success) return;
+
       setAppStatus("audio-ready");
     },
-    [handleUploadAudio]
+    [handleUploadAudio, setAppStatus]
   );
 
-  const handleContinueRecording = useCallback(() => {
-    setAppStatus("idle");
-  }, []);
+  const handleStartNextRecording = useCallback(() => {
+    startMediaRecorder();
+    setAppStatus("recording");
+  }, [startMediaRecorder]);
 
   const handleResetAll = useCallback(() => {
-    setAudioBlob(null);
+    setIsConfirmResetOpen(true);
+  }, []);
+
+  const handleConfirmReset = useCallback(() => {
+    clearBlob();
     clearTranscription();
     setAppStatus("idle");
-  }, [setAudioBlob, clearTranscription]);
+    setIsConfirmResetOpen(false);
+  }, [clearBlob, clearTranscription]);
+
+  // Start transcription for uploaded audio
+  const handleUploadedAudioTranscribe = useCallback(async () => {
+    if (!audioBlob || !storedApiKey) return;
+    await transcribeAudioBlob(audioBlob);
+  }, [audioBlob, storedApiKey, transcribeAudioBlob]);
+
+  // Discard uploaded audio
+  const handleUploadedAudioDiscard = useCallback(() => {
+    clearBlob();
+    setAppStatus("idle");
+  }, [clearBlob]);
+
+  // Retry transcription after error
+  const handleRetryTranscription = useCallback(async () => {
+    if (!retryBlob || !storedApiKey) return;
+    await transcribeAudioBlob(retryBlob);
+  }, [retryBlob, storedApiKey, transcribeAudioBlob]);
+
+  const handleReRecord = useCallback(() => {
+    clearBlob();
+    clearTranscription();
+    setAppStatus("idle");
+  }, [clearBlob, clearTranscription]);
 
   const isApiKeyMissing = !storedApiKey;
 
@@ -183,17 +232,13 @@ export default function Home() {
           </div>
         )}
 
-        {audioBlob && appStatus === "audio-ready" && (
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-md p-2 sm:p-3">
-            <audio
-              src={URL.createObjectURL(audioBlob)}
-              controls
-              className="w-full"
-            />
-          </div>
-        )}
-
         <div className="flex flex-col gap-4">
+          <TranscribeModeSelector
+            value={transcribeMode}
+            onModeChange={setTranscribeMode}
+            disabled={appStatus === "recording" || appStatus === "transcribing"}
+          />
+
           <RecordingControls
             appStatus={appStatus}
             duration={duration}
@@ -203,77 +248,18 @@ export default function Home() {
             onCompleteRecording={handleCompleteRecording}
             onDiscardRecording={handleDiscardRecording}
             onUploadAudio={handleUploadAudioWrapper}
+            onStartTranscription={handleUploadedAudioTranscribe}
+            onDiscardAudio={handleUploadedAudioDiscard}
+            onStartNextRecording={handleStartNextRecording}
+            onResetAll={handleResetAll}
+            onRetryTranscription={handleRetryTranscription}
+            onReRecord={handleReRecord}
+            transcriptionError={transcriptionError}
+            mediaStream={mediaStreamRef?.current ?? null}
+            audioBlob={audioBlob}
+            getPreviewBlob={getPreviewBlob}
           />
-
-          {appStatus === "audio-ready" && (
-            <div className="flex flex-col gap-3">
-              <TranscribeModeSelector
-                value={transcribeMode}
-                onModeChange={setTranscribeMode}
-              />
-              <div className="flex gap-2">
-                <PrimaryButton
-                  onClick={handleTranscribeAudio}
-                  disabled={!audioBlob || appStatus !== "audio-ready"}
-                  label="開始轉錄"
-                />
-                <PrimaryButton
-                  onClick={handleDiscardRecording}
-                  label="丟棄錄音"
-                  variant="ghost"
-                />
-              </div>
-            </div>
-          )}
-
-          {appStatus === "transcribing" && (
-            <div className="flex items-center gap-3 bg-slate-900/40 border border-slate-700/50 rounded-xl p-4">
-              <div className="flex items-center gap-2">
-                <svg
-                  className="animate-spin h-5 w-5 text-slate-300"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                <span className="text-sm text-slate-200">轉錄中...</span>
-              </div>
-            </div>
-          )}
-
-          {appStatus === "transcription-completed" && (
-            <div className="flex gap-2">
-              <PrimaryButton
-                onClick={handleContinueRecording}
-                label="繼續錄音"
-              />
-              <PrimaryButton
-                onClick={handleResetAll}
-                label="重新開始"
-                variant="ghost"
-              />
-            </div>
-          )}
         </div>
-
-        {transcriptionError && (
-          <div className="bg-red-900/20 border border-red-700/40 text-red-200 rounded-xl px-3 py-2 text-sm">
-            {transcriptionError}
-          </div>
-        )}
 
         <TranscriptionResult
           text={transcriptionText ?? ""}
@@ -287,6 +273,13 @@ export default function Home() {
         onApiKeyChange={setApiKeyInput}
         onSave={handleSaveApiKey}
         onClose={() => setIsSettingsOpen(false)}
+      />
+
+      <ConfirmModal
+        isOpen={isConfirmResetOpen}
+        message="確定要清除所有內容並重新開始嗎？"
+        onConfirm={handleConfirmReset}
+        onCancel={() => setIsConfirmResetOpen(false)}
       />
     </div>
   );
