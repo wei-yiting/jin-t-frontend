@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Play, Pause } from "lucide-react";
 
 type WaveformAnimationProps = {
   mediaStream?: MediaStream | null;
@@ -15,7 +16,9 @@ export default function WaveformAnimation({
 }: WaveformAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [audioUrl, setAudioUrl] = useState<string>("");
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // For recording state: real-time audio visualization
   useEffect(() => {
@@ -186,23 +189,50 @@ export default function WaveformAnimation({
     };
   }, [audioBlob, isRecording]);
 
+  const handlePlayPause = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
   // For paused state, show waveform + audio player
   if (audioBlob && !isRecording) {
     return (
       <div className="flex-1 flex items-center gap-3 h-14 min-w-0">
         <canvas ref={canvasRef} className="flex-1 h-14 min-w-0" />
         {audioUrl && (
-          <audio
-            src={audioUrl}
-            controls
-            className="w-32 h-10 shrink-0"
-            preload="metadata"
-          >
-            <source src={audioUrl} type="audio/webm" />
-            <source src={audioUrl} type="audio/wav" />
-            <source src={audioUrl} type="audio/mpeg" />
-            您的瀏覽器不支持音頻播放。
-          </audio>
+          <>
+            <audio
+              ref={audioRef}
+              src={audioUrl}
+              preload="metadata"
+              onEnded={() => setIsPlaying(false)}
+              onPause={() => setIsPlaying(false)}
+              onPlay={() => setIsPlaying(true)}
+              className="hidden"
+            >
+              <source src={audioUrl} type="audio/webm" />
+              <source src={audioUrl} type="audio/wav" />
+              <source src={audioUrl} type="audio/mpeg" />
+            </audio>
+            <button
+              onClick={handlePlayPause}
+              className="w-10 h-10 rounded-full bg-slate-700/60 hover:bg-slate-600/70 border border-slate-600/50 flex items-center justify-center transition-all shrink-0"
+              aria-label={isPlaying ? "暫停" : "播放"}
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 text-slate-300" />
+              ) : (
+                <Play className="w-5 h-5 text-slate-300 ml-0.5" />
+              )}
+            </button>
+          </>
         )}
       </div>
     );

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { X, AlertTriangle } from "lucide-react";
-import PrimaryButton from "./buttons/PrimaryButton";
+import PrimaryButton from "../buttons/PrimaryButton";
 
 type ConfirmModalProps = {
   isOpen: boolean;

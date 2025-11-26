@@ -4,10 +4,10 @@ import { useEffect, useState, useCallback } from "react";
 import Header from "@/components/layout/Header";
 import RecordingControls from "@/components/recording/RecordingControls";
 import TranscriptionResult from "@/components/transcription/TranscriptionResult";
-import SettingsModal from "@/components/settings/SettingsModal";
 import TranscribeModeSelector from "@/components/transcription/TranscribeModeSelector";
+import SettingsModal from "@/components/modal/SettingsModal";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { ConfirmModal } from "@/components/ConfirmModal";
+import { ConfirmModal } from "@/components/modal/ConfirmModal";
 import { useMediaRecorder } from "@/hooks/useMediaRecorder";
 import { useAudioBlob } from "@/hooks/useAudioBlob";
 import { useTranscription } from "@/hooks/useTranscription";
@@ -215,57 +215,69 @@ export default function Home() {
   const isApiKeyMissing = !storedApiKey;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <main className="w-full max-w-5xl flex flex-col gap-6 py-6 px-4 sm:px-6 md:px-8 lg:px-12">
+    <div className="h-screen flex flex-col bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      <section className="shrink-0 border-b border-slate-800 px-4 sm:px-6 md:px-8 lg:px-12 py-4">
         <Header onOpenSettings={handleOpenSettings} />
+      </section>
 
-        {isUnsupported && (
-          <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
-            {SUPPORT_MESSAGE}
-          </div>
-        )}
+      <section className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0">
+        <div className="max-w-5xl mx-auto flex flex-col gap-6">
+          {isUnsupported && (
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+              {SUPPORT_MESSAGE}
+            </div>
+          )}
 
-        {!isUnsupported && isApiKeyMissing && (
-          <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-yellow-100">
-            <span>{NO_KEY_MESSAGE}</span>
-            <PrimaryButton label="開啟設定" onClick={handleOpenSettings} />
-          </div>
-        )}
+          {!isUnsupported && isApiKeyMissing && (
+            <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-yellow-100">
+              <span>{NO_KEY_MESSAGE}</span>
+              <PrimaryButton label="開啟設定" onClick={handleOpenSettings} />
+            </div>
+          )}
 
-        <div className="flex flex-col gap-4">
-          <TranscribeModeSelector
-            value={transcribeMode}
-            onModeChange={setTranscribeMode}
-            disabled={appStatus === "recording" || appStatus === "transcribing"}
-          />
-
-          <RecordingControls
-            appStatus={appStatus}
-            duration={duration}
-            onStartRecording={handleStartRecording}
-            onPauseRecording={handlePauseRecording}
-            onResumeRecording={handleResumeRecording}
-            onCompleteRecording={handleCompleteRecording}
-            onDiscardRecording={handleDiscardRecording}
-            onUploadAudio={handleUploadAudioWrapper}
-            onStartTranscription={handleUploadedAudioTranscribe}
-            onDiscardAudio={handleUploadedAudioDiscard}
-            onStartNextRecording={handleStartNextRecording}
-            onResetAll={handleResetAll}
-            onRetryTranscription={handleRetryTranscription}
-            onReRecord={handleReRecord}
-            transcriptionError={transcriptionError}
-            mediaStream={mediaStreamRef?.current ?? null}
-            audioBlob={audioBlob}
-            getPreviewBlob={getPreviewBlob}
+          <TranscriptionResult
+            text={transcriptionText ?? ""}
+            onChange={setTranscriptionText}
           />
         </div>
+      </section>
 
-        <TranscriptionResult
-          text={transcriptionText ?? ""}
-          onChange={setTranscriptionText}
-        />
-      </main>
+      {/* Recording Controls - Fixed at bottom */}
+      <section className="shrink-0 px-4 sm:px-6 md:px-8 lg:px-12 py-4">
+        <div className="max-w-5xl mx-auto flex flex-col gap-0.5">
+          <div className="flex justify-end">
+            <TranscribeModeSelector
+              value={transcribeMode}
+              onModeChange={setTranscribeMode}
+              disabled={
+                appStatus === "recording" || appStatus === "transcribing"
+              }
+            />
+          </div>
+          <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 min-h-[100px] flex items-center">
+            <RecordingControls
+              appStatus={appStatus}
+              duration={duration}
+              onStartRecording={handleStartRecording}
+              onPauseRecording={handlePauseRecording}
+              onResumeRecording={handleResumeRecording}
+              onCompleteRecording={handleCompleteRecording}
+              onDiscardRecording={handleDiscardRecording}
+              onUploadAudio={handleUploadAudioWrapper}
+              onStartTranscription={handleUploadedAudioTranscribe}
+              onDiscardAudio={handleUploadedAudioDiscard}
+              onStartNextRecording={handleStartNextRecording}
+              onResetAll={handleResetAll}
+              onRetryTranscription={handleRetryTranscription}
+              onReRecord={handleReRecord}
+              transcriptionError={transcriptionError}
+              mediaStream={mediaStreamRef?.current ?? null}
+              audioBlob={audioBlob}
+              getPreviewBlob={getPreviewBlob}
+            />
+          </div>
+        </div>
+      </section>
 
       <SettingsModal
         isOpen={isSettingsOpen}

@@ -57,65 +57,58 @@ export default function TranscribeModeSelector({
   };
 
   return (
-    <div ref={containerRef} className="w-full sm:w-72">
-      <label className="block text-xs font-medium text-slate-400 mb-1">
-        轉錄模式
-      </label>
-      <div className="relative">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setIsOpen((prev) => !prev)}
-          className={`w-full px-3 py-2 rounded-lg border border-slate-700 bg-slate-900/40 text-left flex items-center justify-between text-slate-100 transition-colors ${
-            disabled
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:border-slate-500"
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        className={`pl-2 pr-1.5 py-1.5 rounded-lg bg-transparent text-left flex items-center gap-1.5 text-slate-100 transition-colors ${
+          disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-800/30"
+        }`}
+      >
+        <span className="flex items-center gap-1.5 text-xs">
+          {MODE_ICONS[value]}
+          {selectedMode.label}
+        </span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform ${
+            isOpen ? "rotate-180" : ""
           }`}
-        >
-          <span className="flex items-center gap-2 text-sm">
-            {MODE_ICONS[value]}
-            {selectedMode.label}
-          </span>
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${
-              isOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+        />
+      </button>
 
-        {isOpen && (
-          <div className="absolute z-10 mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
-            {TRANSCRIBE_MODES.map((mode) => {
-              const modeValue = mode.value as TranscribeMode;
-              const isActive = value === modeValue;
+      {isOpen && (
+        <div className="absolute z-10 bottom-full mb-2 right-0 w-56 rounded-xl border border-slate-700 bg-slate-900 shadow-xl">
+          {TRANSCRIBE_MODES.map((mode) => {
+            const modeValue = mode.value as TranscribeMode;
+            const isActive = value === modeValue;
 
-              return (
-                <button
-                  type="button"
-                  key={mode.value}
-                  onClick={() => handleSelect(modeValue)}
-                  className={`w-full px-3 py-2 flex items-start gap-3 text-left transition-colors ${
-                    isActive
-                      ? "bg-slate-800/60 text-slate-100"
-                      : "text-slate-200 hover:bg-slate-800/40"
-                  }`}
-                >
-                  <span className="mt-0.5">{MODE_ICONS[modeValue]}</span>
-                  <span className="flex-1">
-                    <span className="block text-sm font-medium">
-                      {mode.label}
-                    </span>
-                    <span className="block text-xs text-slate-400">
-                      {MODE_DESCRIPTIONS[modeValue]}
-                    </span>
+            return (
+              <button
+                type="button"
+                key={mode.value}
+                onClick={() => handleSelect(modeValue)}
+                className={`w-full px-3 py-2 flex items-start gap-3 text-left transition-colors ${
+                  isActive
+                    ? "bg-slate-800/60 text-slate-100"
+                    : "text-slate-200 hover:bg-slate-800/40"
+                }`}
+              >
+                <span className="mt-0.5">{MODE_ICONS[modeValue]}</span>
+                <span className="flex-1">
+                  <span className="block text-sm font-medium">
+                    {mode.label}
                   </span>
-                  {isActive && <Check className="w-4 h-4 text-emerald-400" />}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                  <span className="block text-xs text-slate-400">
+                    {MODE_DESCRIPTIONS[modeValue]}
+                  </span>
+                </span>
+                {isActive && <Check className="w-4 h-4 text-emerald-400" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

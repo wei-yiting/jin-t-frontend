@@ -19,7 +19,7 @@ const variants: Record<ButtonVariant, string> = {
   success:
     "bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 disabled:bg-emerald-900/50 disabled:border-emerald-800/50 disabled:text-emerald-200 disabled:cursor-not-allowed",
   ghost:
-    "bg-transparent text-slate-400 hover:text-slate-200 border border-transparent hover:border-slate-600 px-3 py-2",
+    "bg-transparent text-slate-300 hover:text-slate-100 border-slate-700 hover:border-slate-600",
 };
 
 export default function PrimaryButton({
@@ -37,8 +37,8 @@ export default function PrimaryButton({
       disabled={disabled}
       className={`${baseStyles} ${variants[variant]} ${className}`.trim()}
     >
-      {icon && <span className="w-4 h-4">{icon}</span>}
-      <span>{label}</span>
+      {icon && icon}
+      {label}
     </button>
   );
 }
