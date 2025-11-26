@@ -84,7 +84,7 @@ export default function RecordingControls({
     <div className="w-full">
       {appStatus === "idle" && (
         <div className="flex gap-3 w-full">
-          <label className="w-[30%] px-4 py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm font-medium flex items-center justify-center gap-2 cursor-pointer">
+          <label className="w-[40%] sm:w-[30%] px-4 py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm font-medium flex items-center justify-center gap-2 cursor-pointer">
             <Upload className="w-4 h-4" />
             上傳音檔
             <input
@@ -96,7 +96,7 @@ export default function RecordingControls({
           </label>
           <button
             onClick={onStartRecording}
-            className="w-[70%] px-6 py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all text-sm font-medium flex items-center justify-center gap-2"
+            className="w-[60%] sm:w-[70%] px-6 py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all text-sm font-medium flex items-center justify-center gap-2"
           >
             <Mic className="w-5 h-5 text-sky-400" />
             開始錄音
@@ -106,7 +106,7 @@ export default function RecordingControls({
 
       {(appStatus === "recording" || appStatus === "paused") && (
         <div className="flex items-center gap-3 w-full min-w-0">
-          <span className="text-xl font-mono text-slate-200 shrink-0">
+          <span className="text-sm sm:text-xl font-mono text-slate-200 shrink-0">
             {formatDuration(duration)}
           </span>
           <div className="flex-1 min-w-0">
@@ -119,47 +119,50 @@ export default function RecordingControls({
           <div className="flex gap-2 shrink-0 flex-nowrap">
             {appStatus === "recording" ? (
               <>
-                <IconButton
-                  icon={<Pause className="w-5 h-5" />}
-                  ariaLabel="暫停"
+                <button
                   onClick={onPauseRecording}
-                  variant="gray"
-                />
-                <IconButton
-                  icon={<Check className="w-5 h-5" />}
-                  ariaLabel="開始轉文字"
-                  onClick={onCompleteRecording}
-                  variant="green"
-                  className="px-8"
-                />
-                <IconButton
-                  icon={<Trash2 className="w-5 h-5" />}
-                  ariaLabel="放棄重錄"
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Pause className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="hidden sm:inline">暫停錄音</span>
+                </button>
+                <button
                   onClick={onDiscardRecording}
-                  variant="red"
-                />
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-200 border border-red-800/50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="hidden sm:inline">重錄</span>
+                </button>
+                <button
+                  onClick={onCompleteRecording}
+                  className="px-3 sm:px-8 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Check className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="hidden sm:inline">轉錄文字</span>
+                </button>
               </>
             ) : (
               <>
-                <PrimaryButton
-                  onClick={onResumeRecording}
-                  label="繼續錄音"
-                  icon={<Play className="w-4 h-4 text-sky-400" />}
-                  className="whitespace-nowrap"
-                />
-                <PrimaryButton
-                  onClick={onCompleteRecording}
-                  label="轉錄文字"
-                  icon={<Check className="w-4 h-4 text-emerald-400" />}
-                  variant="success"
-                  className="whitespace-nowrap"
-                />
                 <button
                   onClick={onDiscardRecording}
-                  className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-2 border bg-transparent text-red-400 hover:text-red-300 border-transparent hover:border-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500 whitespace-nowrap"
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-200 border border-red-800/50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                  放棄重錄
+                  <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="hidden sm:inline">重錄</span>
+                </button>
+                <button
+                  onClick={onResumeRecording}
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Mic className="w-4 sm:w-5 h-4 sm:h-5 text-sky-400" />
+                  <span className="hidden sm:inline">繼續錄音</span>
+                </button>
+                <button
+                  onClick={onCompleteRecording}
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Check className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="hidden sm:inline">轉錄文字</span>
                 </button>
               </>
             )}
@@ -221,14 +224,14 @@ export default function RecordingControls({
         <div className="flex gap-3 w-full">
           <button
             onClick={onResetAll}
-            className="w-[30%] px-4 py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm font-medium flex items-center justify-center gap-2"
+            className="w-[40%] sm:w-[30%] px-4 py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm font-medium flex items-center justify-center gap-2"
           >
             <RotateCcw className="w-4 h-4" />
             重新開始
           </button>
           <button
             onClick={onStartNextRecording}
-            className="w-[70%] px-6 py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all text-sm font-medium flex items-center justify-center gap-2"
+            className="w-[60%] sm:w-[70%] px-6 py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all text-sm font-medium flex items-center justify-center gap-2"
           >
             <Mic className="w-5 h-5 text-sky-400" />
             開始下一段錄音
