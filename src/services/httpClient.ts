@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
-import { ApiError } from "@/types";
+import { ApiError } from "@/src/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 

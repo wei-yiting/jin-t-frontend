@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Header from "@/components/layout/Header";
-import RecordingControls from "@/components/recording/RecordingControls";
-import TranscriptionResult from "@/components/transcription/TranscriptionResult";
-import TranscribeModeSelector from "@/components/transcription/TranscribeModeSelector";
-import SettingsModal from "@/components/modal/SettingsModal";
-import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { ConfirmModal } from "@/components/modal/ConfirmModal";
-import { useMediaRecorder } from "@/hooks/useMediaRecorder";
-import { useAudioBlob } from "@/hooks/useAudioBlob";
-import { useTranscription } from "@/hooks/useTranscription";
-import { userService } from "@/services/user";
-import { DEFAULT_MODE } from "@/constants";
-import { TranscribeMode, AppStatus } from "@/types";
+import Header from "@/src/components/layout/Header";
+import RecordingControls from "@/src/components/recording/RecordingControls";
+import TranscriptionResult from "@/src/components/transcription/TranscriptionResult";
+import TranscribeModeSelector from "@/src/components/transcription/TranscribeModeSelector";
+import SettingsModal from "@/src/components/modal/SettingsModal";
+import PrimaryButton from "@/src/components/buttons/PrimaryButton";
+import { ConfirmModal } from "@/src/components/modal/ConfirmModal";
+import { useMediaRecorder } from "@/src/hooks/useMediaRecorder";
+import { useAudioBlob } from "@/src/hooks/useAudioBlob";
+import { useTranscription } from "@/src/hooks/useTranscription";
+import { userService } from "@/src/services/user";
+import { DEFAULT_MODE } from "@/src/constants";
+import { TranscribeMode, AppStatus } from "@/src/types";
 
 const SUPPORT_MESSAGE =
   "瀏覽器不支援或未授權使用麥克風，請改用最新版本的 Chrome。";

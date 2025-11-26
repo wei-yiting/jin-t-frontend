@@ -1,4 +1,4 @@
-import { TranscribeMode } from "@/types";
+import { TranscribeMode } from "@/src/types";
 
 export const DEFAULT_MODE: TranscribeMode = "fast";
 

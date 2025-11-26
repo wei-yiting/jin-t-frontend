@@ -1,4 +1,4 @@
-import { useClipboard } from "@/hooks/useClipboard";
+import { useClipboard } from "@/src/hooks/useClipboard";
 import { Copy, Check } from "lucide-react";
 
 type CopyButtonProps = {

@@ -1,7 +1,7 @@
 import { httpClient } from "./httpClient";
-import { API_ENDPOINTS } from "@/constants";
-import { TranscribeRequest, TranscribeResponse } from "@/types";
-import { getFileExtensionFromMimeType } from "@/lib/audio-helpers";
+import { API_ENDPOINTS } from "@/src/constants";
+import { TranscribeRequest, TranscribeResponse } from "@/src/types";
+import { getFileExtensionFromMimeType } from "@/src/lib/audio-helpers";
 
 export const transcriptionService = {
   async transcribe(request: TranscribeRequest): Promise<TranscribeResponse> {

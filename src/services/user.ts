@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "@/constants";
+import { STORAGE_KEYS } from "@/src/constants";
 
 //TODO: Currently using local storage, will migrate to backend later
 export const userService = {

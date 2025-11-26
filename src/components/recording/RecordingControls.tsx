@@ -1,4 +1,4 @@
-import { AppStatus } from "@/types";
+import { AppStatus } from "@/src/types";
 import WaveformAnimation from "../ui/WaveformAnimation";
 import PrimaryButton from "../buttons/PrimaryButton";
 import IconButton from "../buttons/IconButton";

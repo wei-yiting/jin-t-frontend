@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, ReactNode } from "react";
-import { TRANSCRIBE_MODES } from "@/constants";
-import { TranscribeMode } from "@/types";
+import { TRANSCRIBE_MODES } from "@/src/constants";
+import { TranscribeMode } from "@/src/types";
 import { Zap, FileText, Sparkles, ChevronDown, Check } from "lucide-react";
 
 type TranscribeModeSelectorProps = {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { transcriptionService } from "@/services/transcription";
-import { TranscribeRequest } from "@/types";
+import { transcriptionService } from "@/src/services/transcription";
+import { TranscribeRequest } from "@/src/types";
 
 export const useTranscription = () => {
   const [isTranscribing, setIsTranscribing] = useState(false);
