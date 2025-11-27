@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Play, Pause } from "lucide-react";
 
-type WaveformAnimationProps = {
+interface WaveformAnimationProps {
   mediaStream?: MediaStream | null;
   audioBlob?: Blob | null;
   isRecording?: boolean;
-};
+}
 
 export default function WaveformAnimation({
   mediaStream,

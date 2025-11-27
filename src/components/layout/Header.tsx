@@ -1,8 +1,8 @@
 import { Settings } from "lucide-react";
 
-type HeaderProps = {
+interface HeaderProps {
   onOpenSettings: () => void;
-};
+}
 
 export default function Header({ onOpenSettings }: HeaderProps) {
   return (

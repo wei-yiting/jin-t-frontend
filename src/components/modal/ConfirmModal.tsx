@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { X, AlertTriangle } from "lucide-react";
 import PrimaryButton from "../buttons/PrimaryButton";
 
-type ConfirmModalProps = {
+interface ConfirmModalProps {
   isOpen: boolean;
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
-};
+}
 
 export const ConfirmModal = ({
   isOpen,

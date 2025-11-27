@@ -2,14 +2,14 @@ import { ReactNode, cloneElement, isValidElement } from "react";
 
 type IconButtonVariant = "gray" | "green" | "red";
 
-type IconButtonProps = {
+interface IconButtonProps {
   icon: ReactNode;
   ariaLabel: string;
   onClick: () => void;
   disabled?: boolean;
   variant?: IconButtonVariant;
   className?: string;
-};
+}
 
 const baseStyles =
   "p-3 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed";

@@ -2,14 +2,14 @@ import { ReactNode } from "react";
 
 type ButtonVariant = "default" | "success" | "ghost";
 
-type PrimaryButtonProps = {
+interface PrimaryButtonProps {
   label: string;
   icon?: ReactNode;
   onClick: () => void;
   disabled?: boolean;
   variant?: ButtonVariant;
   className?: string;
-};
+}
 
 const baseStyles =
   "px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-2 border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500";

@@ -3,11 +3,11 @@ import { TRANSCRIBE_MODES } from "@/src/constants";
 import { TranscribeMode } from "@/src/types";
 import { Zap, FileText, Sparkles, ChevronDown, Check } from "lucide-react";
 
-type TranscribeModeSelectorProps = {
+interface TranscribeModeSelectorProps {
   value: TranscribeMode;
   onModeChange: (mode: TranscribeMode) => void;
   disabled?: boolean;
-};
+}
 
 const MODE_DESCRIPTIONS: Record<TranscribeMode, string> = {
   fast: "最快速，但可能缺少標點符號",

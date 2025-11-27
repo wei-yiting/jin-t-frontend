@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
-type RecordingControlsProps = {
+interface RecordingControlsProps {
   appStatus: AppStatus;
   duration: number;
   onStartRecording: () => void;
@@ -34,7 +34,7 @@ type RecordingControlsProps = {
   mediaStream: MediaStream | null;
   audioBlob?: Blob | null;
   getPreviewBlob?: () => Blob | null;
-};
+}
 
 const formatDuration = (duration: number) => {
   const minutes = Math.floor(duration / 60)

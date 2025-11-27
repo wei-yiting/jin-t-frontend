@@ -1,13 +1,13 @@
 import PrimaryButton from "../buttons/PrimaryButton";
 import { X, Check } from "lucide-react";
 
-type SettingsModalProps = {
+interface SettingsModalProps {
   isOpen: boolean;
   apiKey: string;
   onApiKeyChange: (value: string) => void;
   onSave: () => void;
   onClose: () => void;
-};
+}
 
 export default function SettingsModal({
   isOpen,

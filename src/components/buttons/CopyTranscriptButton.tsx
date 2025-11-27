@@ -2,9 +2,9 @@ import { Copy, Check } from "lucide-react";
 import { useClipboard } from "@/src/hooks/useClipboard";
 import { useEffect, useRef, useState } from "react";
 
-type CopyTranscriptButtonProps = {
+interface CopyTranscriptButtonProps {
   transcriptText: string;
-};
+}
 
 export default function CopyTranscriptButton({
   transcriptText,

@@ -4,10 +4,10 @@ import { Copy, Check } from "lucide-react";
 
 const TEXT_AREA_THRESHOLD = 5;
 
-type TranscriptBlockProps = {
+interface TranscriptBlockProps {
   text: string;
   onChange?: (value: string) => void;
-};
+}
 
 export default function TranscriptBlock({
   text,
