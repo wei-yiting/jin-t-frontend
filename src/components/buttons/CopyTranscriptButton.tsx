@@ -2,22 +2,22 @@ import { Copy, Check } from "lucide-react";
 import { useClipboard } from "@/src/hooks/useClipboard";
 import { useEffect, useRef, useState } from "react";
 
-type CopyTranscriptionButtonProps = {
-  transcriptionText: string;
+type CopyTranscriptButtonProps = {
+  transcriptText: string;
 };
 
-export default function CopyTranscriptionButton({
-  transcriptionText,
-}: CopyTranscriptionButtonProps) {
+export default function CopyTranscriptButton({
+  transcriptText,
+}: CopyTranscriptButtonProps) {
   const { showIsCopied, copyToClipboard } = useClipboard();
   const [shouldDisplayButton, setShouldDisplayButton] = useState(true);
   const prevShowIsCopiedRef = useRef(false);
 
-  // Reset shouldShow when transcriptionText changes (new transcription or transcription updated)
+  // Reset shouldShow when transcriptText changes (new transcript or transcript updated)
   useEffect(() => {
     setShouldDisplayButton(true);
     prevShowIsCopiedRef.current = false;
-  }, [transcriptionText]);
+  }, [transcriptText]);
 
   // When showCopiedToast changes from true to false, hide the button with animation
   useEffect(() => {
@@ -28,14 +28,14 @@ export default function CopyTranscriptionButton({
     prevShowIsCopiedRef.current = showIsCopied;
   }, [showIsCopied]);
 
-  const handleCopyTranscription = async () => {
-    if (!transcriptionText) return;
-    await copyToClipboard(transcriptionText);
+  const handleCopyTranscript = async () => {
+    if (!transcriptText) return;
+    await copyToClipboard(transcriptText);
   };
 
   return (
     <button
-      onClick={handleCopyTranscription}
+      onClick={handleCopyTranscript}
       className={`bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all duration-300 ease-in-out text-sm font-medium flex items-center justify-center gap-2 ${
         shouldDisplayButton
           ? "opacity-100 w-auto aspect-square shrink-0 sm:aspect-auto sm:w-[35%] px-4 py-4"

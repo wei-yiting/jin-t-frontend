@@ -5,10 +5,10 @@ export type AppStatus =
   | "idle" // Initial state, can start recording
   | "recording" // Currently recording
   | "paused" // Recording paused
-  | "audio-ready" // Audio ready, waiting for transcription
+  | "audio-ready" // Audio ready, waiting for transcript
   | "transcribing" // Transcribing audio
-  | "transcription-completed" // Transcription completed, can continue or reset
-  | "transcription-error"; // Transcription failed, can retry or re-record
+  | "transcribed" // Transcribed completed, can continue or reset
+  | "transcribe-error"; // Transcribe failed, can retry or re-record
 
 export interface TranscribeRequest {
   audio_file: Blob;

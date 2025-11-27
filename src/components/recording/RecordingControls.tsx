@@ -24,13 +24,13 @@ type RecordingControlsProps = {
   onCompleteRecording: () => void;
   onDiscardRecording: () => void;
   onUploadAudio?: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onStartTranscription?: () => void;
+  onStartTranscribe?: () => void;
   onDiscardAudio?: () => void;
   onStartNextRecording: () => void;
   onResetAll: () => void;
-  onRetryTranscription?: () => void;
+  onRetryTranscribe?: () => void;
   onReRecord?: () => void;
-  transcriptionError?: string | null;
+  transcribeError?: string | null;
   mediaStream: MediaStream | null;
   audioBlob?: Blob | null;
   getPreviewBlob?: () => Blob | null;
@@ -55,13 +55,13 @@ export default function RecordingControls({
   onCompleteRecording,
   onDiscardRecording,
   onUploadAudio,
-  onStartTranscription,
+  onStartTranscribe,
   onDiscardAudio,
   onStartNextRecording,
   onResetAll,
-  onRetryTranscription,
+  onRetryTranscribe,
   onReRecord,
-  transcriptionError,
+  transcribeError,
   mediaStream,
   audioBlob,
   getPreviewBlob,
@@ -177,7 +177,7 @@ export default function RecordingControls({
           </div>
           <div className="flex gap-2 shrink-0 flex-nowrap">
             <PrimaryButton
-              onClick={onStartTranscription}
+              onClick={onStartTranscribe}
               label="開始轉錄"
               icon={<Check className="w-4 h-4" />}
               variant="success"
@@ -220,7 +220,7 @@ export default function RecordingControls({
         </div>
       )}
 
-      {appStatus === "transcription-completed" && (
+      {appStatus === "transcribed" && (
         <div className="flex gap-3 w-full transition-all duration-300 ease-in-out">
           <button
             onClick={onResetAll}
@@ -241,14 +241,14 @@ export default function RecordingControls({
         </div>
       )}
 
-      {appStatus === "transcription-error" && (
+      {appStatus === "transcribe-error" && (
         <div className="flex flex-col gap-3 w-full">
           <div className="flex items-start gap-3 bg-red-900/20 border border-red-700/40 rounded-lg px-4 py-3">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-red-200 text-sm font-medium mb-1">轉錄失敗</p>
-              {transcriptionError && (
-                <p className="text-red-300 text-xs">{transcriptionError}</p>
+              {transcribeError && (
+                <p className="text-red-300 text-xs">{transcribeError}</p>
               )}
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function RecordingControls({
               className="w-[30%]"
             />
             <PrimaryButton
-              onClick={onRetryTranscription}
+              onClick={onRetryTranscribe}
               label="重試轉錄"
               icon={<RefreshCw className="w-4 h-4" />}
               className="w-[70%]"

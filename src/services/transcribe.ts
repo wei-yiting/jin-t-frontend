@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from "@/src/constants";
 import { TranscribeRequest, TranscribeResponse } from "@/src/types";
 import { getFileExtensionFromMimeType } from "@/src/lib/audio-helpers";
 
-export const transcriptionService = {
+export const transcribeService = {
   async transcribe(request: TranscribeRequest): Promise<TranscribeResponse> {
     const formData = new FormData();
 

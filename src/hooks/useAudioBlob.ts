@@ -4,7 +4,7 @@ export const useAudioBlob = () => {
   // Main audio blob (from completed recording or upload)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
-  // Blob for retry on transcription error
+  // Blob for retry on transcribe error
   const [retryBlob, setRetryBlob] = useState<Blob | null>(null);
 
   // Handle file upload

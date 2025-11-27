@@ -4,15 +4,15 @@ import { Copy, Check } from "lucide-react";
 
 const TEXT_AREA_THRESHOLD = 5;
 
-type TranscriptionResultProps = {
+type TranscriptBlockProps = {
   text: string;
   onChange?: (value: string) => void;
 };
 
-export default function TranscriptionResult({
+export default function TranscriptBlock({
   text,
   onChange,
-}: TranscriptionResultProps) {
+}: TranscriptBlockProps) {
   const hasText = Boolean(text);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { showIsCopied, copyToClipboard } = useClipboard();

@@ -3,15 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import Header from "@/src/components/layout/Header";
 import RecordingControls from "@/src/components/recording/RecordingControls";
-import TranscriptionResult from "@/src/components/transcription/TranscriptionResult";
+import TranscriptBlock from "@/src/components/transcription/TranscriptBlock";
 import TranscribeModeSelector from "@/src/components/transcription/TranscribeModeSelector";
 import SettingsModal from "@/src/components/modal/SettingsModal";
 import PrimaryButton from "@/src/components/buttons/PrimaryButton";
 import { ConfirmModal } from "@/src/components/modal/ConfirmModal";
-import CopyTranscriptionButton from "@/src/components/buttons/CopyTranscriptionButton";
+import CopyTranscriptButton from "@/src/components/buttons/CopyTranscriptButton";
 import { useMediaRecorder } from "@/src/hooks/useMediaRecorder";
 import { useAudioBlob } from "@/src/hooks/useAudioBlob";
-import { useTranscription } from "@/src/hooks/useTranscription";
+import { useTranscribe } from "@/src/hooks/useTranscribe";
 import { userService } from "@/src/services/user";
 import { DEFAULT_MODE } from "@/src/constants";
 import { TranscribeMode, AppStatus } from "@/src/types";
@@ -40,12 +40,12 @@ export default function Home() {
   } = useAudioBlob();
 
   const {
-    transcriptionText,
-    error: transcriptionError,
+    transcriptText,
+    error: transcribeError,
     transcribe,
-    setTranscriptionText,
-    clearTranscription,
-  } = useTranscription();
+    setTranscriptText,
+    clearTranscript,
+  } = useTranscribe();
 
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
@@ -65,12 +65,12 @@ export default function Home() {
           audio_duration:
             duration && duration > 0 ? duration.toFixed(2) : undefined,
         });
-        setAppStatus("transcription-completed");
+        setAppStatus("transcribed");
         clearBlob();
       } catch (error) {
-        console.error("Transcription failed:", error);
+        console.error("Transcribe failed:", error);
         setRetryBlob(blob);
-        setAppStatus("transcription-error");
+        setAppStatus("transcribe-error");
       }
     },
     [storedApiKey, transcribeMode, transcribe, setRetryBlob, clearBlob]
@@ -184,12 +184,12 @@ export default function Home() {
 
   const handleConfirmReset = useCallback(() => {
     clearBlob();
-    clearTranscription();
+    clearTranscript();
     setAppStatus("idle");
     setIsConfirmResetOpen(false);
-  }, [clearBlob, clearTranscription]);
+  }, [clearBlob, clearTranscript]);
 
-  // Start transcription for uploaded audio
+  // Start transcript for uploaded audio
   const handleUploadedAudioTranscribe = useCallback(async () => {
     if (!audioBlob || !storedApiKey) return;
     await transcribeAudioBlob(audioBlob);
@@ -201,17 +201,17 @@ export default function Home() {
     setAppStatus("idle");
   }, [clearBlob]);
 
-  // Retry transcription after error
-  const handleRetryTranscription = useCallback(async () => {
+  // Retry transcribe after error
+  const handleRetryTranscribe = useCallback(async () => {
     if (!retryBlob || !storedApiKey) return;
     await transcribeAudioBlob(retryBlob);
   }, [retryBlob, storedApiKey, transcribeAudioBlob]);
 
   const handleReRecord = useCallback(() => {
     clearBlob();
-    clearTranscription();
+    clearTranscript();
     setAppStatus("idle");
-  }, [clearBlob, clearTranscription]);
+  }, [clearBlob, clearTranscript]);
 
   const isApiKeyMissing = !storedApiKey;
 
@@ -236,9 +236,9 @@ export default function Home() {
             </div>
           )}
 
-          <TranscriptionResult
-            text={transcriptionText ?? ""}
-            onChange={setTranscriptionText}
+          <TranscriptBlock
+            text={transcriptText ?? ""}
+            onChange={setTranscriptText}
           />
         </div>
       </section>
@@ -266,22 +266,20 @@ export default function Home() {
                 onCompleteRecording={handleCompleteRecording}
                 onDiscardRecording={handleDiscardRecording}
                 onUploadAudio={handleUploadAudioWrapper}
-                onStartTranscription={handleUploadedAudioTranscribe}
+                onStartTranscribe={handleUploadedAudioTranscribe}
                 onDiscardAudio={handleUploadedAudioDiscard}
                 onStartNextRecording={handleStartNextRecording}
                 onResetAll={handleResetAll}
-                onRetryTranscription={handleRetryTranscription}
+                onRetryTranscribe={handleRetryTranscribe}
                 onReRecord={handleReRecord}
-                transcriptionError={transcriptionError}
+                transcribeError={transcribeError}
                 mediaStream={mediaStreamRef?.current ?? null}
                 audioBlob={audioBlob}
                 getPreviewBlob={getPreviewBlob}
               />
             </div>
-            {appStatus === "transcription-completed" && (
-              <CopyTranscriptionButton
-                transcriptionText={transcriptionText ?? ""}
-              />
+            {appStatus === "transcribed" && (
+              <CopyTranscriptButton transcriptText={transcriptText ?? ""} />
             )}
           </div>
         </div>

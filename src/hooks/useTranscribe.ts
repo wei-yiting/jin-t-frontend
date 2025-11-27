@@ -1,12 +1,10 @@
 import { useState, useCallback } from "react";
-import { transcriptionService } from "@/src/services/transcription";
+import { transcribeService } from "@/src/services/transcribe";
 import { TranscribeRequest } from "@/src/types";
 
-export const useTranscription = () => {
+export const useTranscribe = () => {
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [transcriptionText, setTranscriptionText] = useState<string | null>(
-    null
-  );
+  const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const transcribe = useCallback(async (request: TranscribeRequest) => {
@@ -14,10 +12,10 @@ export const useTranscription = () => {
     setError(null);
 
     try {
-      const response = await transcriptionService.transcribe(request);
+      const response = await transcribeService.transcribe(request);
       const newText = response.transcript;
 
-      setTranscriptionText((prev) => {
+      setTranscriptText((prev) => {
         if (prev) {
           return prev + "\n" + newText;
         }
@@ -35,22 +33,22 @@ export const useTranscription = () => {
     }
   }, []);
 
-  const clearTranscription = useCallback(() => {
-    setTranscriptionText(null);
+  const clearTranscript = useCallback(() => {
+    setTranscriptText(null);
     setError(null);
   }, []);
 
-  const setManualTranscription = useCallback((value: string) => {
-    setTranscriptionText(value);
+  const setManualTranscript = useCallback((value: string) => {
+    setTranscriptText(value);
     setError(null);
   }, []);
 
   return {
     isTranscribing,
-    transcriptionText,
+    transcriptText,
     error,
     transcribe,
-    clearTranscription,
-    setTranscriptionText: setManualTranscription,
+    clearTranscript,
+    setTranscriptText: setManualTranscript,
   };
 };
