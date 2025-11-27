@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 
 export const useClipboard = (timeout = 2000) => {
-  const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [showIsCopied, setShowIsCopied] = useState(false);
 
   const copyToClipboard = useCallback(
     async (text: string) => {
@@ -12,10 +12,10 @@ export const useClipboard = (timeout = 2000) => {
 
       try {
         await navigator.clipboard.writeText(text);
-        setShowCopiedToast(true);
+        setShowIsCopied(true);
 
         setTimeout(() => {
-          setShowCopiedToast(false);
+          setShowIsCopied(false);
         }, timeout);
 
         return true;
@@ -27,5 +27,5 @@ export const useClipboard = (timeout = 2000) => {
     [timeout]
   );
 
-  return { showCopiedToast, copyToClipboard };
+  return { showIsCopied, copyToClipboard };
 };

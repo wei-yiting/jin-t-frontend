@@ -221,20 +221,22 @@ export default function RecordingControls({
       )}
 
       {appStatus === "transcription-completed" && (
-        <div className="flex gap-3 w-full">
+        <div className="flex gap-3 w-full transition-all duration-300 ease-in-out">
           <button
             onClick={onResetAll}
-            className="w-[40%] sm:w-[30%] px-4 py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm font-medium flex items-center justify-center gap-2"
+            className="w-[40%] sm:w-[30%] px-4 py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm font-medium flex items-center justify-center gap-2 shrink-0"
           >
             <RotateCcw className="w-4 h-4" />
-            重新開始
+            <span className="sm:hidden">重置</span>
+            <span className="hidden sm:inline">重新開始</span>
           </button>
           <button
             onClick={onStartNextRecording}
-            className="w-[60%] sm:w-[70%] px-6 py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all text-sm font-medium flex items-center justify-center gap-2"
+            className="flex-1 px-6 py-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all duration-300 ease-in-out text-sm font-medium flex items-center justify-center gap-2"
           >
             <Mic className="w-5 h-5 text-sky-400" />
-            開始下一段錄音
+            <span className="sm:hidden">下段錄音</span>
+            <span className="hidden sm:inline">開始下一段錄音</span>
           </button>
         </div>
       )}

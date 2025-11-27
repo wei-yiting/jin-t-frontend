@@ -8,6 +8,7 @@ import TranscribeModeSelector from "@/src/components/transcription/TranscribeMod
 import SettingsModal from "@/src/components/modal/SettingsModal";
 import PrimaryButton from "@/src/components/buttons/PrimaryButton";
 import { ConfirmModal } from "@/src/components/modal/ConfirmModal";
+import CopyTranscriptionButton from "@/src/components/buttons/CopyTranscriptionButton";
 import { useMediaRecorder } from "@/src/hooks/useMediaRecorder";
 import { useAudioBlob } from "@/src/hooks/useAudioBlob";
 import { useTranscription } from "@/src/hooks/useTranscription";
@@ -254,27 +255,34 @@ export default function Home() {
               }
             />
           </div>
-          <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 min-h-[100px] flex items-center">
-            <RecordingControls
-              appStatus={appStatus}
-              duration={duration}
-              onStartRecording={handleStartRecording}
-              onPauseRecording={handlePauseRecording}
-              onResumeRecording={handleResumeRecording}
-              onCompleteRecording={handleCompleteRecording}
-              onDiscardRecording={handleDiscardRecording}
-              onUploadAudio={handleUploadAudioWrapper}
-              onStartTranscription={handleUploadedAudioTranscribe}
-              onDiscardAudio={handleUploadedAudioDiscard}
-              onStartNextRecording={handleStartNextRecording}
-              onResetAll={handleResetAll}
-              onRetryTranscription={handleRetryTranscription}
-              onReRecord={handleReRecord}
-              transcriptionError={transcriptionError}
-              mediaStream={mediaStreamRef?.current ?? null}
-              audioBlob={audioBlob}
-              getPreviewBlob={getPreviewBlob}
-            />
+          <div className="bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 min-h-[100px] flex items-center gap-3 h-auto">
+            <div className="flex-1 min-w-0">
+              <RecordingControls
+                appStatus={appStatus}
+                duration={duration}
+                onStartRecording={handleStartRecording}
+                onPauseRecording={handlePauseRecording}
+                onResumeRecording={handleResumeRecording}
+                onCompleteRecording={handleCompleteRecording}
+                onDiscardRecording={handleDiscardRecording}
+                onUploadAudio={handleUploadAudioWrapper}
+                onStartTranscription={handleUploadedAudioTranscribe}
+                onDiscardAudio={handleUploadedAudioDiscard}
+                onStartNextRecording={handleStartNextRecording}
+                onResetAll={handleResetAll}
+                onRetryTranscription={handleRetryTranscription}
+                onReRecord={handleReRecord}
+                transcriptionError={transcriptionError}
+                mediaStream={mediaStreamRef?.current ?? null}
+                audioBlob={audioBlob}
+                getPreviewBlob={getPreviewBlob}
+              />
+            </div>
+            {appStatus === "transcription-completed" && (
+              <CopyTranscriptionButton
+                transcriptionText={transcriptionText ?? ""}
+              />
+            )}
           </div>
         </div>
       </section>
