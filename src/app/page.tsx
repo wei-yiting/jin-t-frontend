@@ -28,6 +28,7 @@ export default function Home() {
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
   const [appStatus, setAppStatus] = useState<AppStatus>("idle");
+  const [recordingError, setRecordingError] = useState<string | null>(null);
 
   const {
     audioBlob,
@@ -74,13 +75,7 @@ export default function Home() {
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
     async (blob: Blob, duration?: number) => {
-      console.log("[Mobile Debug - Page] transcribeAudioBlob called", {
-        appStatus,
-        hasBlobm: !!blob,
-        duration,
-        stackTrace: new Error().stack,
-      });
-      // Check if API key is set// Check if API key is set
+      // Check if API key is set
       if (!userService.checkHasPersonalApiKey()) {
         setIsSettingsOpen(true);
         return;
@@ -100,7 +95,6 @@ export default function Home() {
         setAppStatus("transcribed");
         clearBlob();
       } catch (error) {
-        console.error("Transcribe failed:", error);
         setRetryBlob(blob);
         setAppStatus("transcribe-error");
       }
@@ -111,14 +105,6 @@ export default function Home() {
   // Called by useMediaRecorder when recording is complete
   const handleRecordingCompletedAndTranscribe = useCallback(
     async (blob: Blob, duration: number) => {
-      console.log(
-        "[Mobile Debug - Page] handleRecordingCompletedAndTranscribe called",
-        {
-          appStatus,
-          hasBlob: !!blob,
-          duration,
-        }
-      );
       setAudioBlob(blob);
 
       // If no API key, just save the blob and wait
@@ -133,6 +119,12 @@ export default function Home() {
     [setAudioBlob, transcribeAudioBlob, userService]
   );
 
+  // Handle recording errors from useMediaRecorder
+  const handleRecordingError = useCallback((error: string) => {
+    setRecordingError(error);
+    setAppStatus("idle");
+  }, []);
+
   const {
     startMediaRecorder,
     pauseMediaRecorder,
@@ -144,12 +136,10 @@ export default function Home() {
     getPreviewBlob,
   } = useMediaRecorder({
     onRecordingComplete: handleRecordingCompletedAndTranscribe,
+    onRecordingError: handleRecordingError,
   });
 
   const handleCompleteRecording = useCallback(() => {
-    console.log("[Mobile Debug - Page] handleCompleteRecording called", {
-      appStatus,
-    });
     // Stop recording (will trigger onRecordingComplete callback)
     if (appStatus === "recording" || appStatus === "paused") {
       stopMediaRecorder();
@@ -157,37 +147,26 @@ export default function Home() {
   }, [appStatus, stopMediaRecorder]);
 
   const handleDiscardRecording = useCallback(() => {
-    console.log("[Mobile Debug - Page] handleDiscardRecording called", {
-      appStatus,
-    });
     discardMediaRecorder();
     clearBlob();
+    setRecordingError(null);
     setAppStatus("idle");
   }, [discardMediaRecorder, clearBlob]);
 
   const handleStartRecording = useCallback(async () => {
-    console.log("[Mobile Debug - Page] handleStartRecording called");
+    setRecordingError(null); // Clear previous errors
     const { success } = await startMediaRecorder();
     if (success) {
       setAppStatus("recording");
-    } else {
-      console.error("[Mobile Debug - Page] Failed to start recording");
-      // Optionally show error message to user
     }
   }, [startMediaRecorder]);
 
   const handlePauseRecording = useCallback(() => {
-    console.log("[Mobile Debug - Page] handlePauseRecording called", {
-      appStatus,
-    });
     pauseMediaRecorder();
     setAppStatus("paused");
   }, [pauseMediaRecorder]);
 
   const handleResumeRecording = useCallback(() => {
-    console.log("[Mobile Debug - Page] handleResumeRecording called", {
-      appStatus,
-    });
     resumeMediaRecorder();
     setAppStatus("recording");
   }, [resumeMediaRecorder]);
@@ -204,11 +183,10 @@ export default function Home() {
   );
 
   const handleStartNextRecording = useCallback(async () => {
+    setRecordingError(null); // Clear previous errors
     const { success } = await startMediaRecorder();
     if (success) {
       setAppStatus("recording");
-    } else {
-      console.error("[Mobile Debug - Page] Failed to start next recording");
     }
   }, [startMediaRecorder]);
 
@@ -279,6 +257,20 @@ export default function Home() {
             </div>
           )}
 
+          {recordingError && (
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+              <p className="font-medium mb-1">錄音錯誤</p>
+              <p className="text-red-300 text-xs">{recordingError}</p>
+            </div>
+          )}
+
+          {transcribeError && (
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+              <p className="font-medium mb-1">轉錄失敗</p>
+              <p className="text-red-300 text-xs">{transcribeError}</p>
+            </div>
+          )}
+
           <TranscriptBlock
             text={transcriptText ?? ""}
             onChange={setTranscriptText}
@@ -315,7 +307,6 @@ export default function Home() {
                 onResetAll={handleResetAll}
                 onRetryTranscribe={handleRetryTranscribe}
                 onReRecord={handleReRecord}
-                transcribeError={transcribeError}
                 mediaStream={mediaStreamRef?.current ?? null}
                 audioBlob={audioBlob}
                 getPreviewBlob={getPreviewBlob}

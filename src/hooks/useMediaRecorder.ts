@@ -3,16 +3,19 @@ import { useRecordingTimer } from "./useRecordingTimer";
 
 interface UseMediaRecorderProps {
   onRecordingComplete: (blob: Blob, duration: number) => void;
+  onRecordingError: (error: string) => void;
 }
 
 export const useMediaRecorder = ({
   onRecordingComplete,
+  onRecordingError,
 }: UseMediaRecorderProps) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const finalDurationRef = useRef<number>(0); // Store duration when recording completes
   const shouldCallOnCompleteRef = useRef<boolean>(true); // Flag to control if onstop should trigger callback
+  const cleanupFnsRef = useRef<(() => void)[]>([]); // Store cleanup functions for event listeners
 
   const {
     duration,
@@ -23,55 +26,81 @@ export const useMediaRecorder = ({
     resetTimer,
   } = useRecordingTimer();
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      console.log("[Mobile Debug - MediaRecorder] Cleaning up");
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+  // Cleanup existing instances and event listeners
+  const cleanupExistingInstancesAndEventListeners = useCallback(() => {
+    // Execute all cleanup functions to remove event listeners
+    cleanupFnsRef.current.forEach((cleanup) => cleanup());
+    cleanupFnsRef.current = [];
+
+    // Stop and cleanup MediaRecorder
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stop();
       }
-    };
+      mediaRecorderRef.current = null;
+    }
+
+    // Stop and cleanup media stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
   }, []);
 
-  const setupMediaRecorder = useCallback(async () => {
-    try {
-      console.log("[Mobile Debug - MediaRecorder] Setting up MediaRecorder");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-      streamRef.current = stream;
-      mediaRecorderRef.current = new MediaRecorder(stream);
+  // Cleanup on unmount
+  useEffect(
+    function cleanupOnUnmount() {
+      return () => {
+        cleanupExistingInstancesAndEventListeners();
+      };
+    },
+    [cleanupExistingInstancesAndEventListeners]
+  );
 
-      // Monitor track ended event
-      stream.getAudioTracks().forEach((track) => {
-        track.addEventListener("ended", () => {
-          console.error(
-            "[Mobile Debug - MediaRecorder] Track ended unexpectedly, will recreate on next start"
-          );
-          // Set flag to prevent sending corrupted audio
-          shouldCallOnCompleteRef.current = false;
-          mediaRecorderRef.current = null;
-          streamRef.current = null;
-        });
-      });
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
+  // Setup audio track ended event listeners
+  // This handles the case where mobile browsers (especially Safari) automatically
+  // stop audio tracks due to resource management (e.g., when paused for too long).
+  // This prevents sending corrupted/empty audio to transcription
+  // and notify the user to restart recording.
+  const setupAudioTrackListeners = useCallback(
+    (stream: MediaStream) => {
+      const handleTrackEnded = () => {
+        shouldCallOnCompleteRef.current = false; // Set flag to prevent sending corrupted audio
+        mediaRecorderRef.current = null; // Reset MediaRecorder
+        streamRef.current = null; // Reset stream
+        onRecordingError("錄音裝置連線中斷，請重新開始錄音");
       };
 
-      mediaRecorderRef.current.onstop = () => {
+      stream.getAudioTracks().forEach((track) => {
+        track.addEventListener("ended", handleTrackEnded);
+        cleanupFnsRef.current.push(() => {
+          track.removeEventListener("ended", handleTrackEnded);
+        });
+      });
+    },
+    [onRecordingError]
+  );
+
+  const setupDataAvailableListener = useCallback((recorder: MediaRecorder) => {
+    const handleDataAvailable = (event: BlobEvent) => {
+      if (event.data.size > 0) {
+        chunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.addEventListener("dataavailable", handleDataAvailable);
+    cleanupFnsRef.current.push(() => {
+      recorder.removeEventListener("dataavailable", handleDataAvailable);
+    });
+  }, []);
+
+  const setupStopListener = useCallback(
+    (recorder: MediaRecorder) => {
+      const handleStop = () => {
         const totalSize = chunksRef.current.reduce(
           (acc, chunk) => acc + (chunk as Blob).size,
           0
         );
-        console.log("[Mobile Debug - MediaRecorder] onstop called", {
-          hasChunks: chunksRef.current.length > 0,
-          totalSize,
-          duration: finalDurationRef.current,
-          shouldCallOnComplete: shouldCallOnCompleteRef.current,
-        });
 
         // Only call onRecordingComplete if:
         // 1. Not discarded (shouldCallOnComplete is true)
@@ -81,9 +110,8 @@ export const useMediaRecorder = ({
           const blob = new Blob(chunksRef.current, { type: mimeType });
           onRecordingComplete(blob, finalDurationRef.current);
         } else if (shouldCallOnCompleteRef.current && totalSize <= 100) {
-          console.error(
-            "[Mobile Debug - MediaRecorder] Recording too small or corrupted, skipping transcription",
-            { totalSize }
+          onRecordingError(
+            "錄音檔案過小或損毀，請確認麥克風正常運作後重新錄音"
           );
         }
 
@@ -91,43 +119,52 @@ export const useMediaRecorder = ({
         shouldCallOnCompleteRef.current = true; // Reset flag
       };
 
-      console.log("[Mobile Debug - MediaRecorder] Setup complete");
+      recorder.addEventListener("stop", handleStop);
+      cleanupFnsRef.current.push(() => {
+        recorder.removeEventListener("stop", handleStop);
+      });
+    },
+    [onRecordingComplete, onRecordingError]
+  );
+
+  // Setup MediaRecorder with stream and event listeners
+  const setupMediaRecorder = useCallback(async () => {
+    try {
+      // Cleanup before creating new ones
+      cleanupExistingInstancesAndEventListeners();
+
+      // Create new stream and MediaRecorder
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      streamRef.current = stream;
+      mediaRecorderRef.current = new MediaRecorder(stream);
+
+      // Setup all event listeners
+      setupAudioTrackListeners(stream);
+      setupDataAvailableListener(mediaRecorderRef.current);
+      setupStopListener(mediaRecorderRef.current);
+
       return { success: true };
     } catch (err) {
-      console.error("[Mobile Debug - MediaRecorder] Setup failed:", err);
-      return { success: false };
+      return { success: false, error: err };
     }
-  }, [onRecordingComplete]);
+  }, [
+    cleanupExistingInstancesAndEventListeners,
+    setupAudioTrackListeners,
+    setupDataAvailableListener,
+    setupStopListener,
+  ]);
 
   const startMediaRecorder = useCallback(async () => {
-    console.log("[Mobile Debug - MediaRecorder] startMediaRecorder called", {
-      hasMediaRecorder: !!mediaRecorderRef.current,
-      hasStream: !!streamRef.current,
-      streamActive: streamRef.current
-        ? streamRef.current.getAudioTracks()[0]?.enabled &&
-          streamRef.current.getAudioTracks()[0]?.readyState === "live"
-        : false,
-    });
-
     chunksRef.current = [];
     shouldCallOnCompleteRef.current = true; // Enable callback
 
-    // Check if MediaRecorder is valid and stream is active
-    const streamActive =
-      streamRef.current &&
-      streamRef.current.getAudioTracks().length > 0 &&
-      streamRef.current.getAudioTracks()[0].readyState === "live";
-
-    // Setup MediaRecorder if not exists or stream is inactive
-    if (!mediaRecorderRef.current || !streamActive) {
-      console.log(
-        "[Mobile Debug - MediaRecorder] MediaRecorder or stream invalid, setting up..."
-      );
-      const { success } = await setupMediaRecorder();
-      if (!success || !mediaRecorderRef.current) {
-        console.error(
-          "[Mobile Debug - MediaRecorder] Failed to setup MediaRecorder"
-        );
+    // Setup MediaRecorder if not exists (first time or after track ended)
+    if (!mediaRecorderRef.current) {
+      const result = await setupMediaRecorder();
+      if (!result.success || !mediaRecorderRef.current) {
+        onRecordingError("無法啟動麥克風，請檢查瀏覽器權限設定或重新整理頁面");
         return { success: false };
       }
     }
@@ -135,25 +172,18 @@ export const useMediaRecorder = ({
     try {
       mediaRecorderRef.current.start(100); // Collect data every 100ms for smoother waveform
       startTimer();
-      console.log("[Mobile Debug - MediaRecorder] Started successfully");
       return { success: true };
-    } catch (err) {
-      console.error("[Mobile Debug - MediaRecorder] Failed to start:", err);
+    } catch {
+      onRecordingError("錄音啟動失敗，請重新整理頁面後再試");
       return { success: false };
     }
-  }, [startTimer, setupMediaRecorder]);
+  }, [startTimer, setupMediaRecorder, onRecordingError]);
 
   const pauseMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] pauseMediaRecorder called", {
-      state: mediaRecorderRef.current?.state,
-    });
     if (
       !mediaRecorderRef.current ||
       mediaRecorderRef.current.state !== "recording"
     ) {
-      console.log(
-        "[Mobile Debug - MediaRecorder] Cannot pause - not in recording state"
-      );
       return;
     }
 
@@ -162,16 +192,10 @@ export const useMediaRecorder = ({
   }, [pauseTimer]);
 
   const resumeMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] resumeMediaRecorder called", {
-      state: mediaRecorderRef.current?.state,
-    });
     if (
       !mediaRecorderRef.current ||
       mediaRecorderRef.current.state !== "paused"
     ) {
-      console.log(
-        "[Mobile Debug - MediaRecorder] Cannot resume - not in paused state"
-      );
       return;
     }
 
@@ -180,17 +204,11 @@ export const useMediaRecorder = ({
   }, [resumeTimer]);
 
   const stopMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] stopMediaRecorder called", {
-      state: mediaRecorderRef.current?.state,
-    });
     if (
       !mediaRecorderRef.current ||
       (mediaRecorderRef.current.state !== "recording" &&
         mediaRecorderRef.current.state !== "paused")
     ) {
-      console.log(
-        "[Mobile Debug - MediaRecorder] Cannot stop - not in recording/paused state"
-      );
       return;
     }
 
@@ -201,9 +219,6 @@ export const useMediaRecorder = ({
   }, [stopTimer]);
 
   const discardMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] discardMediaRecorder called", {
-      state: mediaRecorderRef.current?.state,
-    });
     resetTimer();
     shouldCallOnCompleteRef.current = false; // Disable callback for this stop
 

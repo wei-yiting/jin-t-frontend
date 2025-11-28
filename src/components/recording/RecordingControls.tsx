@@ -10,7 +10,6 @@ import {
   Trash2,
   Play,
   RotateCcw,
-  AlertCircle,
   RefreshCw,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -30,7 +29,6 @@ interface RecordingControlsProps {
   onResetAll: () => void;
   onRetryTranscribe?: () => void;
   onReRecord?: () => void;
-  transcribeError?: string | null;
   mediaStream: MediaStream | null;
   audioBlob?: Blob | null;
   getPreviewBlob?: () => Blob | null;
@@ -61,7 +59,6 @@ export default function RecordingControls({
   onResetAll,
   onRetryTranscribe,
   onReRecord,
-  transcribeError,
   mediaStream,
   audioBlob,
   getPreviewBlob,
@@ -120,39 +117,21 @@ export default function RecordingControls({
             {appStatus === "recording" ? (
               <>
                 <button
-                  onClick={(e) => {
-                    console.log(
-                      "[Mobile Debug] Discard button clicked in recording state",
-                      { target: e.target, currentTarget: e.currentTarget }
-                    );
-                    onDiscardRecording();
-                  }}
+                  onClick={onDiscardRecording}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-200 border border-red-800/50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
                   <span className="hidden sm:inline">重錄</span>
                 </button>
                 <button
-                  onClick={(e) => {
-                    console.log("[Mobile Debug] Pause button clicked", {
-                      target: e.target,
-                      currentTarget: e.currentTarget,
-                    });
-                    onPauseRecording();
-                  }}
+                  onClick={onPauseRecording}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Pause className="w-4 sm:w-5 h-4 sm:h-5" />
                   <span className="hidden sm:inline">暫停錄音</span>
                 </button>
                 <button
-                  onClick={(e) => {
-                    console.log(
-                      "[Mobile Debug] Complete button clicked in recording state",
-                      { target: e.target, currentTarget: e.currentTarget }
-                    );
-                    onCompleteRecording();
-                  }}
+                  onClick={onCompleteRecording}
                   className="px-3 sm:px-8 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Check className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -162,39 +141,21 @@ export default function RecordingControls({
             ) : (
               <>
                 <button
-                  onClick={(e) => {
-                    console.log(
-                      "[Mobile Debug] Discard button clicked in paused state",
-                      { target: e.target, currentTarget: e.currentTarget }
-                    );
-                    onDiscardRecording();
-                  }}
+                  onClick={onDiscardRecording}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-200 border border-red-800/50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
                   <span className="hidden sm:inline">重錄</span>
                 </button>
                 <button
-                  onClick={(e) => {
-                    console.log("[Mobile Debug] Resume button clicked", {
-                      target: e.target,
-                      currentTarget: e.currentTarget,
-                    });
-                    onResumeRecording();
-                  }}
+                  onClick={onResumeRecording}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Mic className="w-4 sm:w-5 h-4 sm:h-5 text-sky-400" />
                   <span className="hidden sm:inline">繼續錄音</span>
                 </button>
                 <button
-                  onClick={(e) => {
-                    console.log(
-                      "[Mobile Debug] Complete button clicked in paused state",
-                      { target: e.target, currentTarget: e.currentTarget }
-                    );
-                    onCompleteRecording();
-                  }}
+                  onClick={onCompleteRecording}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Check className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -278,31 +239,20 @@ export default function RecordingControls({
       )}
 
       {appStatus === "transcribe-error" && (
-        <div className="flex flex-col gap-3 w-full">
-          <div className="flex items-start gap-3 bg-red-900/20 border border-red-700/40 rounded-lg px-4 py-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-red-200 text-sm font-medium mb-1">轉錄失敗</p>
-              {transcribeError && (
-                <p className="text-red-300 text-xs">{transcribeError}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-3 w-full">
-            <PrimaryButton
-              onClick={onReRecord}
-              label="重新錄音"
-              icon={<Mic className="w-4 h-4" />}
-              variant="ghost"
-              className="w-[30%]"
-            />
-            <PrimaryButton
-              onClick={onRetryTranscribe}
-              label="重試轉錄"
-              icon={<RefreshCw className="w-4 h-4" />}
-              className="w-[70%]"
-            />
-          </div>
+        <div className="flex gap-3 w-full">
+          <PrimaryButton
+            onClick={onReRecord}
+            label="重新錄音"
+            icon={<Mic className="w-4 h-4" />}
+            variant="ghost"
+            className="w-[30%]"
+          />
+          <PrimaryButton
+            onClick={onRetryTranscribe}
+            label="重試轉錄"
+            icon={<RefreshCw className="w-4 h-4" />}
+            className="w-[70%]"
+          />
         </div>
       )}
     </div>
