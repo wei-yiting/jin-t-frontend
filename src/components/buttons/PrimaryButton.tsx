@@ -56,21 +56,10 @@ export default function PrimaryButton({
     </svg>
   );
 
-  /**
-   * Creates a safe button click handler that prevents mobile touch event issues.
-   * Always prevents default behavior and stops event propagation to avoid
-   * accidental triggers on mobile devices.
-   */
-  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onClick();
-  };
-
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={onClick}
       disabled={disabled || isLoading}
       className={`${baseStyles} ${variants[variant]} ${className}`.trim()}
     >
