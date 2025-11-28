@@ -26,3 +26,19 @@ export interface ApiError {
   message: string;
   code?: string;
 }
+
+export const USER_INFO_KEYS = {
+  DEVICE_ID: "jjt_device_id",
+  USE_PERSONAL_API_KEY: "jjt_use_personal_api_key",
+  OPENAI_API_KEY: "jjt_openai_api_key",
+  CONSENT_DATA_COLLECTION: "jjt_consent_data_collection",
+} as const;
+
+export const LOCAL_STORAGE_KEYS = {
+  ...USER_INFO_KEYS,
+} as const;
+
+export interface CheckIsOpenaiApiKeyValidResponse {
+  is_api_key_valid: boolean;
+  has_unexpectied_validation_error: boolean;
+}

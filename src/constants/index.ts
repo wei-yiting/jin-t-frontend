@@ -15,4 +15,5 @@ export const STORAGE_KEYS = {
 
 export const API_ENDPOINTS = {
   TRANSCRIBE: "/transcribe",
+  CHECK_OPENAI_API_KEY: "/check-openai-api-key",
 } as const;

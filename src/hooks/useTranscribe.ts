@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { transcribeService } from "@/src/services/transcribe";
+import { transcribeService } from "@/src/services/transcribeService";
 import { TranscribeRequest } from "@/src/types";
 
 export const useTranscribe = () => {

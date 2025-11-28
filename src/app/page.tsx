@@ -12,7 +12,7 @@ import CopyTranscriptButton from "@/src/components/buttons/CopyTranscriptButton"
 import { useMediaRecorder } from "@/src/hooks/useMediaRecorder";
 import { useAudioBlob } from "@/src/hooks/useAudioBlob";
 import { useTranscribe } from "@/src/hooks/useTranscribe";
-import { userService } from "@/src/services/user";
+import { userService } from "@/src/services/userService";
 import { DEFAULT_MODE } from "@/src/constants";
 import { TranscribeMode, AppStatus } from "@/src/types";
 
@@ -23,9 +23,8 @@ const NO_KEY_MESSAGE = "請先設定 OpenAI API Key 才能使用轉錄功能。"
 export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [storedApiKey, setStoredApiKey] = useState<string | null>(null);
-  const [isUnsupported, setIsUnsupported] = useState(false);
+  const [isMissingApiKey, setIsMissingApiKey] = useState(false);
+  const [isRecorderUnsupported, setIsRecorderUnsupported] = useState(false);
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
   const [appStatus, setAppStatus] = useState<AppStatus>("idle");
@@ -47,20 +46,47 @@ export default function Home() {
     clearTranscript,
   } = useTranscribe();
 
+  useEffect(function ensureDeviceIdExists() {
+    (async () => {
+      await userService.getOrCreateDeviceId();
+    })();
+  }, []);
+
+  useEffect(function checkAndSetIsRecorderUnsupported() {
+    if (!navigator.mediaDevices) {
+      setIsRecorderUnsupported(true);
+    }
+  }, []);
+
+  useEffect(function checkAndSetIsMissingApiKey() {
+    (async () => {
+      const isUsingPersonalApiKey =
+        await userService.getIsUsingPersonalApiKey();
+      if (!isUsingPersonalApiKey) {
+        return;
+      }
+
+      const hasPersonalApiKey = await userService.checkHasPersonalApiKey();
+      setIsMissingApiKey(!hasPersonalApiKey);
+    })();
+  }, []);
+
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
     async (blob: Blob, duration?: number) => {
       // Check if API key is set// Check if API key is set
-      if (!storedApiKey) {
-        handleOpenSettings();
+      if (!userService.checkHasPersonalApiKey()) {
+        setIsSettingsOpen(true);
         return;
       }
+
+      const openaiApiKey = await userService.getAndDecodeOpenaiApiKey();
 
       try {
         setAppStatus("transcribing");
         await transcribe({
           audio_file: blob,
-          openai_api_key: storedApiKey!,
+          openai_api_key: openaiApiKey,
           transcribe_mode: transcribeMode,
           audio_duration:
             duration && duration > 0 ? duration.toFixed(2) : undefined,
@@ -73,7 +99,7 @@ export default function Home() {
         setAppStatus("transcribe-error");
       }
     },
-    [storedApiKey, transcribeMode, transcribe, setRetryBlob, clearBlob]
+    [transcribeMode, transcribe, setRetryBlob, clearBlob, userService]
   );
 
   // Called by useMediaRecorder when recording is complete
@@ -82,7 +108,7 @@ export default function Home() {
       setAudioBlob(blob);
 
       // If no API key, just save the blob and wait
-      if (!storedApiKey) {
+      if (!userService.checkHasPersonalApiKey()) {
         setAppStatus("audio-ready");
         return;
       }
@@ -90,7 +116,7 @@ export default function Home() {
       // Otherwise, immediately start transcribing
       await transcribeAudioBlob(blob, duration);
     },
-    [setAudioBlob, storedApiKey, transcribeAudioBlob]
+    [setAudioBlob, transcribeAudioBlob, userService]
   );
 
   const {
@@ -106,40 +132,16 @@ export default function Home() {
     onRecordingComplete: handleRecordingCompletedAndTranscribe,
   });
 
-  useEffect(() => {
-    if (!navigator.mediaDevices) {
-      setIsUnsupported(true);
-    }
-
-    const key = userService.getApiKey();
-    if (key) {
-      setStoredApiKey(key);
-      setApiKeyInput(key);
-    } else {
-      setIsSettingsOpen(true);
-    }
+  const handleApiKeySaved = useCallback(() => {
+    setIsMissingApiKey(false);
   }, []);
-
-  const handleOpenSettings = () => {
-    setApiKeyInput(storedApiKey ?? "");
-    setIsSettingsOpen(true);
-  };
-
-  const handleSaveApiKey = () => {
-    if (!apiKeyInput.trim()) {
-      return;
-    }
-    userService.setApiKey(apiKeyInput.trim());
-    setStoredApiKey(apiKeyInput.trim());
-    setIsSettingsOpen(false);
-  };
 
   const handleCompleteRecording = useCallback(() => {
     // Stop recording (will trigger onRecordingComplete callback)
     if (appStatus === "recording" || appStatus === "paused") {
       stopMediaRecorder();
     }
-  }, [storedApiKey, appStatus, stopMediaRecorder, handleOpenSettings]);
+  }, [appStatus, stopMediaRecorder]);
 
   const handleDiscardRecording = useCallback(() => {
     discardMediaRecorder();
@@ -191,9 +193,13 @@ export default function Home() {
 
   // Start transcript for uploaded audio
   const handleUploadedAudioTranscribe = useCallback(async () => {
-    if (!audioBlob || !storedApiKey) return;
+    if (!audioBlob) return;
+    if (!userService.checkHasPersonalApiKey()) {
+      setIsSettingsOpen(true);
+      return;
+    }
     await transcribeAudioBlob(audioBlob);
-  }, [audioBlob, storedApiKey, transcribeAudioBlob]);
+  }, [audioBlob, transcribeAudioBlob, userService]);
 
   // Discard uploaded audio
   const handleUploadedAudioDiscard = useCallback(() => {
@@ -203,9 +209,13 @@ export default function Home() {
 
   // Retry transcribe after error
   const handleRetryTranscribe = useCallback(async () => {
-    if (!retryBlob || !storedApiKey) return;
+    if (!retryBlob) return;
+    if (!userService.checkHasPersonalApiKey()) {
+      setIsSettingsOpen(true);
+      return;
+    }
     await transcribeAudioBlob(retryBlob);
-  }, [retryBlob, storedApiKey, transcribeAudioBlob]);
+  }, [retryBlob, transcribeAudioBlob, userService]);
 
   const handleReRecord = useCallback(() => {
     clearBlob();
@@ -213,26 +223,27 @@ export default function Home() {
     setAppStatus("idle");
   }, [clearBlob, clearTranscript]);
 
-  const isApiKeyMissing = !storedApiKey;
-
   return (
     <div className="h-screen flex flex-col bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <section className="shrink-0 border-b border-slate-800 px-4 sm:px-6 md:px-8 lg:px-12 py-4">
-        <Header onOpenSettings={handleOpenSettings} />
+        <Header onOpenSettings={() => setIsSettingsOpen(true)} />
       </section>
 
       <section className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0">
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
-          {isUnsupported && (
+          {isRecorderUnsupported && (
             <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
               {SUPPORT_MESSAGE}
             </div>
           )}
 
-          {!isUnsupported && isApiKeyMissing && (
+          {!isRecorderUnsupported && isMissingApiKey && (
             <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-yellow-100">
               <span>{NO_KEY_MESSAGE}</span>
-              <PrimaryButton label="開啟設定" onClick={handleOpenSettings} />
+              <PrimaryButton
+                label="開啟設定"
+                onClick={() => setIsSettingsOpen(true)}
+              />
             </div>
           )}
 
@@ -287,10 +298,8 @@ export default function Home() {
 
       <SettingsModal
         isOpen={isSettingsOpen}
-        apiKey={apiKeyInput}
-        onApiKeyChange={setApiKeyInput}
-        onSave={handleSaveApiKey}
-        onClose={() => setIsSettingsOpen(false)}
+        onModalClose={() => setIsSettingsOpen(false)}
+        onValidApiKeySaved={() => setIsMissingApiKey(false)}
       />
 
       <ConfirmModal
