@@ -167,8 +167,13 @@ export default function Home() {
 
   const handleStartRecording = useCallback(async () => {
     console.log("[Mobile Debug - Page] handleStartRecording called");
-    await startMediaRecorder();
-    setAppStatus("recording");
+    const { success } = await startMediaRecorder();
+    if (success) {
+      setAppStatus("recording");
+    } else {
+      console.error("[Mobile Debug - Page] Failed to start recording");
+      // Optionally show error message to user
+    }
   }, [startMediaRecorder]);
 
   const handlePauseRecording = useCallback(() => {
@@ -199,8 +204,12 @@ export default function Home() {
   );
 
   const handleStartNextRecording = useCallback(async () => {
-    await startMediaRecorder();
-    setAppStatus("recording");
+    const { success } = await startMediaRecorder();
+    if (success) {
+      setAppStatus("recording");
+    } else {
+      console.error("[Mobile Debug - Page] Failed to start next recording");
+    }
   }, [startMediaRecorder]);
 
   const handleResetAll = useCallback(() => {

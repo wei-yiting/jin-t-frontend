@@ -23,6 +23,16 @@ export const useMediaRecorder = ({
     resetTimer,
   } = useRecordingTimer();
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      console.log("[Mobile Debug - MediaRecorder] Cleaning up");
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
   const setupMediaRecorder = useCallback(async () => {
     try {
       console.log("[Mobile Debug - MediaRecorder] Setting up MediaRecorder");
@@ -38,6 +48,8 @@ export const useMediaRecorder = ({
           console.error(
             "[Mobile Debug - MediaRecorder] Track ended unexpectedly, will recreate on next start"
           );
+          // Set flag to prevent sending corrupted audio
+          shouldCallOnCompleteRef.current = false;
           mediaRecorderRef.current = null;
           streamRef.current = null;
         });
@@ -50,17 +62,29 @@ export const useMediaRecorder = ({
       };
 
       mediaRecorderRef.current.onstop = () => {
+        const totalSize = chunksRef.current.reduce(
+          (acc, chunk) => acc + (chunk as Blob).size,
+          0
+        );
         console.log("[Mobile Debug - MediaRecorder] onstop called", {
           hasChunks: chunksRef.current.length > 0,
+          totalSize,
           duration: finalDurationRef.current,
           shouldCallOnComplete: shouldCallOnCompleteRef.current,
         });
 
-        // Only call onRecordingComplete if not discarded
-        if (shouldCallOnCompleteRef.current) {
+        // Only call onRecordingComplete if:
+        // 1. Not discarded (shouldCallOnComplete is true)
+        // 2. Has valid audio data (totalSize > 100 bytes - minimum valid audio file)
+        if (shouldCallOnCompleteRef.current && totalSize > 100) {
           const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
           const blob = new Blob(chunksRef.current, { type: mimeType });
           onRecordingComplete(blob, finalDurationRef.current);
+        } else if (shouldCallOnCompleteRef.current && totalSize <= 100) {
+          console.error(
+            "[Mobile Debug - MediaRecorder] Recording too small or corrupted, skipping transcription",
+            { totalSize }
+          );
         }
 
         chunksRef.current = [];
@@ -68,14 +92,12 @@ export const useMediaRecorder = ({
       };
 
       console.log("[Mobile Debug - MediaRecorder] Setup complete");
+      return { success: true };
     } catch (err) {
       console.error("[Mobile Debug - MediaRecorder] Setup failed:", err);
+      return { success: false };
     }
   }, [onRecordingComplete]);
-
-  useEffect(() => {
-    setupMediaRecorder();
-  }, [setupMediaRecorder]);
 
   const startMediaRecorder = useCallback(async () => {
     console.log("[Mobile Debug - MediaRecorder] startMediaRecorder called", {
@@ -96,26 +118,28 @@ export const useMediaRecorder = ({
       streamRef.current.getAudioTracks().length > 0 &&
       streamRef.current.getAudioTracks()[0].readyState === "live";
 
+    // Setup MediaRecorder if not exists or stream is inactive
     if (!mediaRecorderRef.current || !streamActive) {
       console.log(
-        "[Mobile Debug - MediaRecorder] MediaRecorder or stream invalid, recreating..."
+        "[Mobile Debug - MediaRecorder] MediaRecorder or stream invalid, setting up..."
       );
-      await setupMediaRecorder();
-    }
-
-    if (!mediaRecorderRef.current) {
-      console.error(
-        "[Mobile Debug - MediaRecorder] Failed to create MediaRecorder"
-      );
-      return;
+      const { success } = await setupMediaRecorder();
+      if (!success || !mediaRecorderRef.current) {
+        console.error(
+          "[Mobile Debug - MediaRecorder] Failed to setup MediaRecorder"
+        );
+        return { success: false };
+      }
     }
 
     try {
       mediaRecorderRef.current.start(100); // Collect data every 100ms for smoother waveform
       startTimer();
       console.log("[Mobile Debug - MediaRecorder] Started successfully");
+      return { success: true };
     } catch (err) {
       console.error("[Mobile Debug - MediaRecorder] Failed to start:", err);
+      return { success: false };
     }
   }, [startTimer, setupMediaRecorder]);
 
