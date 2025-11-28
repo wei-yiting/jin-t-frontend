@@ -28,6 +28,7 @@ export default function Home() {
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
   const [appStatus, setAppStatus] = useState<AppStatus>("idle");
+  const [recordingError, setRecordingError] = useState<string | null>(null);
 
   const {
     audioBlob,
@@ -74,7 +75,7 @@ export default function Home() {
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
     async (blob: Blob, duration?: number) => {
-      // Check if API key is set// Check if API key is set
+      // Check if API key is set
       if (!userService.checkHasPersonalApiKey()) {
         setIsSettingsOpen(true);
         return;
@@ -94,7 +95,6 @@ export default function Home() {
         setAppStatus("transcribed");
         clearBlob();
       } catch (error) {
-        console.error("Transcribe failed:", error);
         setRetryBlob(blob);
         setAppStatus("transcribe-error");
       }
@@ -119,6 +119,12 @@ export default function Home() {
     [setAudioBlob, transcribeAudioBlob, userService]
   );
 
+  // Handle recording errors from useMediaRecorder
+  const handleRecordingError = useCallback((error: string) => {
+    setRecordingError(error);
+    setAppStatus("idle");
+  }, []);
+
   const {
     startMediaRecorder,
     pauseMediaRecorder,
@@ -130,11 +136,8 @@ export default function Home() {
     getPreviewBlob,
   } = useMediaRecorder({
     onRecordingComplete: handleRecordingCompletedAndTranscribe,
+    onRecordingError: handleRecordingError,
   });
-
-  const handleApiKeySaved = useCallback(() => {
-    setIsMissingApiKey(false);
-  }, []);
 
   const handleCompleteRecording = useCallback(() => {
     // Stop recording (will trigger onRecordingComplete callback)
@@ -146,12 +149,16 @@ export default function Home() {
   const handleDiscardRecording = useCallback(() => {
     discardMediaRecorder();
     clearBlob();
+    setRecordingError(null);
     setAppStatus("idle");
   }, [discardMediaRecorder, clearBlob]);
 
-  const handleStartRecording = useCallback(() => {
-    startMediaRecorder();
-    setAppStatus("recording");
+  const handleStartRecording = useCallback(async () => {
+    setRecordingError(null); // Clear previous errors
+    const { success } = await startMediaRecorder();
+    if (success) {
+      setAppStatus("recording");
+    }
   }, [startMediaRecorder]);
 
   const handlePauseRecording = useCallback(() => {
@@ -175,9 +182,12 @@ export default function Home() {
     [handleUploadAudio, setAppStatus]
   );
 
-  const handleStartNextRecording = useCallback(() => {
-    startMediaRecorder();
-    setAppStatus("recording");
+  const handleStartNextRecording = useCallback(async () => {
+    setRecordingError(null); // Clear previous errors
+    const { success } = await startMediaRecorder();
+    if (success) {
+      setAppStatus("recording");
+    }
   }, [startMediaRecorder]);
 
   const handleResetAll = useCallback(() => {
@@ -247,6 +257,20 @@ export default function Home() {
             </div>
           )}
 
+          {recordingError && (
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+              <p className="font-medium mb-1">錄音錯誤</p>
+              <p className="text-red-300 text-xs">{recordingError}</p>
+            </div>
+          )}
+
+          {transcribeError && (
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+              <p className="font-medium mb-1">轉錄失敗</p>
+              <p className="text-red-300 text-xs">{transcribeError}</p>
+            </div>
+          )}
+
           <TranscriptBlock
             text={transcriptText ?? ""}
             onChange={setTranscriptText}
@@ -283,7 +307,6 @@ export default function Home() {
                 onResetAll={handleResetAll}
                 onRetryTranscribe={handleRetryTranscribe}
                 onReRecord={handleReRecord}
-                transcribeError={transcribeError}
                 mediaStream={mediaStreamRef?.current ?? null}
                 audioBlob={audioBlob}
                 getPreviewBlob={getPreviewBlob}
