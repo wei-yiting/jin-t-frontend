@@ -165,9 +165,9 @@ export default function Home() {
     setAppStatus("idle");
   }, [discardMediaRecorder, clearBlob]);
 
-  const handleStartRecording = useCallback(() => {
+  const handleStartRecording = useCallback(async () => {
     console.log("[Mobile Debug - Page] handleStartRecording called");
-    startMediaRecorder();
+    await startMediaRecorder();
     setAppStatus("recording");
   }, [startMediaRecorder]);
 
@@ -198,8 +198,8 @@ export default function Home() {
     [handleUploadAudio, setAppStatus]
   );
 
-  const handleStartNextRecording = useCallback(() => {
-    startMediaRecorder();
+  const handleStartNextRecording = useCallback(async () => {
+    await startMediaRecorder();
     setAppStatus("recording");
   }, [startMediaRecorder]);
 

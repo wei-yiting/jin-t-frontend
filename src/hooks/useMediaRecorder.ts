@@ -23,55 +23,101 @@ export const useMediaRecorder = ({
     resetTimer,
   } = useRecordingTimer();
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+  const setupMediaRecorder = useCallback(async () => {
+    try {
+      console.log("[Mobile Debug - MediaRecorder] Setting up MediaRecorder");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      streamRef.current = stream;
+      mediaRecorderRef.current = new MediaRecorder(stream);
+
+      // Monitor track ended event
+      stream.getAudioTracks().forEach((track) => {
+        track.addEventListener("ended", () => {
+          console.error(
+            "[Mobile Debug - MediaRecorder] Track ended unexpectedly, will recreate on next start"
+          );
+          mediaRecorderRef.current = null;
+          streamRef.current = null;
         });
-        streamRef.current = stream;
-        mediaRecorderRef.current = new MediaRecorder(stream);
+      });
 
-        mediaRecorderRef.current.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunksRef.current.push(event.data);
-          }
-        };
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
 
-        mediaRecorderRef.current.onstop = () => {
-          console.log("[Mobile Debug - MediaRecorder] onstop called", {
-            hasChunks: chunksRef.current.length > 0,
-            duration: finalDurationRef.current,
-            shouldCallOnComplete: shouldCallOnCompleteRef.current,
-          });
+      mediaRecorderRef.current.onstop = () => {
+        console.log("[Mobile Debug - MediaRecorder] onstop called", {
+          hasChunks: chunksRef.current.length > 0,
+          duration: finalDurationRef.current,
+          shouldCallOnComplete: shouldCallOnCompleteRef.current,
+        });
 
-          // Only call onRecordingComplete if not discarded
-          if (shouldCallOnCompleteRef.current) {
-            const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
-            const blob = new Blob(chunksRef.current, { type: mimeType });
-            onRecordingComplete(blob, finalDurationRef.current);
-          }
+        // Only call onRecordingComplete if not discarded
+        if (shouldCallOnCompleteRef.current) {
+          const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
+          const blob = new Blob(chunksRef.current, { type: mimeType });
+          onRecordingComplete(blob, finalDurationRef.current);
+        }
 
-          chunksRef.current = [];
-          shouldCallOnCompleteRef.current = true; // Reset flag
-        };
-      } catch (err) {
-        console.error(err);
-      }
-    })();
+        chunksRef.current = [];
+        shouldCallOnCompleteRef.current = true; // Reset flag
+      };
+
+      console.log("[Mobile Debug - MediaRecorder] Setup complete");
+    } catch (err) {
+      console.error("[Mobile Debug - MediaRecorder] Setup failed:", err);
+    }
   }, [onRecordingComplete]);
 
-  const startMediaRecorder = useCallback(() => {
+  useEffect(() => {
+    setupMediaRecorder();
+  }, [setupMediaRecorder]);
+
+  const startMediaRecorder = useCallback(async () => {
+    console.log("[Mobile Debug - MediaRecorder] startMediaRecorder called", {
+      hasMediaRecorder: !!mediaRecorderRef.current,
+      hasStream: !!streamRef.current,
+      streamActive: streamRef.current
+        ? streamRef.current.getAudioTracks()[0]?.enabled &&
+          streamRef.current.getAudioTracks()[0]?.readyState === "live"
+        : false,
+    });
+
     chunksRef.current = [];
     shouldCallOnCompleteRef.current = true; // Enable callback
 
+    // Check if MediaRecorder is valid and stream is active
+    const streamActive =
+      streamRef.current &&
+      streamRef.current.getAudioTracks().length > 0 &&
+      streamRef.current.getAudioTracks()[0].readyState === "live";
+
+    if (!mediaRecorderRef.current || !streamActive) {
+      console.log(
+        "[Mobile Debug - MediaRecorder] MediaRecorder or stream invalid, recreating..."
+      );
+      await setupMediaRecorder();
+    }
+
     if (!mediaRecorderRef.current) {
+      console.error(
+        "[Mobile Debug - MediaRecorder] Failed to create MediaRecorder"
+      );
       return;
     }
 
-    mediaRecorderRef.current.start(100); // Collect data every 100ms for smoother waveform
-    startTimer();
-  }, [startTimer]);
+    try {
+      mediaRecorderRef.current.start(100); // Collect data every 100ms for smoother waveform
+      startTimer();
+      console.log("[Mobile Debug - MediaRecorder] Started successfully");
+    } catch (err) {
+      console.error("[Mobile Debug - MediaRecorder] Failed to start:", err);
+    }
+  }, [startTimer, setupMediaRecorder]);
 
   const pauseMediaRecorder = useCallback(() => {
     console.log("[Mobile Debug - MediaRecorder] pauseMediaRecorder called", {
