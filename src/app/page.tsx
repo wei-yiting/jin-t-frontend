@@ -74,6 +74,12 @@ export default function Home() {
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
     async (blob: Blob, duration?: number) => {
+      console.log("[Mobile Debug - Page] transcribeAudioBlob called", {
+        appStatus,
+        hasBlobm: !!blob,
+        duration,
+        stackTrace: new Error().stack,
+      });
       // Check if API key is set// Check if API key is set
       if (!userService.checkHasPersonalApiKey()) {
         setIsSettingsOpen(true);
@@ -99,12 +105,20 @@ export default function Home() {
         setAppStatus("transcribe-error");
       }
     },
-    [transcribeMode, transcribe, setRetryBlob, clearBlob, userService]
+    [transcribeMode, transcribe, setRetryBlob, clearBlob]
   );
 
   // Called by useMediaRecorder when recording is complete
   const handleRecordingCompletedAndTranscribe = useCallback(
     async (blob: Blob, duration: number) => {
+      console.log(
+        "[Mobile Debug - Page] handleRecordingCompletedAndTranscribe called",
+        {
+          appStatus,
+          hasBlob: !!blob,
+          duration,
+        }
+      );
       setAudioBlob(blob);
 
       // If no API key, just save the blob and wait
@@ -116,7 +130,7 @@ export default function Home() {
       // Otherwise, immediately start transcribing
       await transcribeAudioBlob(blob, duration);
     },
-    [setAudioBlob, transcribeAudioBlob, userService]
+    [setAudioBlob, transcribeAudioBlob]
   );
 
   const {
@@ -137,6 +151,9 @@ export default function Home() {
   }, []);
 
   const handleCompleteRecording = useCallback(() => {
+    console.log("[Mobile Debug - Page] handleCompleteRecording called", {
+      appStatus,
+    });
     // Stop recording (will trigger onRecordingComplete callback)
     if (appStatus === "recording" || appStatus === "paused") {
       stopMediaRecorder();
@@ -144,22 +161,32 @@ export default function Home() {
   }, [appStatus, stopMediaRecorder]);
 
   const handleDiscardRecording = useCallback(() => {
+    console.log("[Mobile Debug - Page] handleDiscardRecording called", {
+      appStatus,
+    });
     discardMediaRecorder();
     clearBlob();
     setAppStatus("idle");
   }, [discardMediaRecorder, clearBlob]);
 
   const handleStartRecording = useCallback(() => {
+    console.log("[Mobile Debug - Page] handleStartRecording called");
     startMediaRecorder();
     setAppStatus("recording");
   }, [startMediaRecorder]);
 
   const handlePauseRecording = useCallback(() => {
+    console.log("[Mobile Debug - Page] handlePauseRecording called", {
+      appStatus,
+    });
     pauseMediaRecorder();
     setAppStatus("paused");
   }, [pauseMediaRecorder]);
 
   const handleResumeRecording = useCallback(() => {
+    console.log("[Mobile Debug - Page] handleResumeRecording called", {
+      appStatus,
+    });
     resumeMediaRecorder();
     setAppStatus("recording");
   }, [resumeMediaRecorder]);

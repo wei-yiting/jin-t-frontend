@@ -38,6 +38,10 @@ export const useMediaRecorder = ({
         };
 
         mediaRecorderRef.current.onstop = () => {
+          console.log("[Mobile Debug - MediaRecorder] onstop called", {
+            hasChunks: chunksRef.current.length > 0,
+            duration: finalDurationRef.current,
+          });
           const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
           const blob = new Blob(chunksRef.current, { type: mimeType });
           onRecordingComplete?.(blob, finalDurationRef.current);
@@ -61,6 +65,7 @@ export const useMediaRecorder = ({
   }, [startTimer]);
 
   const pauseMediaRecorder = useCallback(() => {
+    console.log("[Mobile Debug - MediaRecorder] pauseMediaRecorder called");
     if (!mediaRecorderRef.current) {
       return;
     }
@@ -70,6 +75,7 @@ export const useMediaRecorder = ({
   }, [pauseTimer]);
 
   const resumeMediaRecorder = useCallback(() => {
+    console.log("[Mobile Debug - MediaRecorder] resumeMediaRecorder called");
     if (!mediaRecorderRef.current) {
       return;
     }
@@ -79,6 +85,7 @@ export const useMediaRecorder = ({
   }, [resumeTimer]);
 
   const stopMediaRecorder = useCallback(() => {
+    console.log("[Mobile Debug - MediaRecorder] stopMediaRecorder called");
     if (!mediaRecorderRef.current) {
       return;
     }
@@ -89,6 +96,7 @@ export const useMediaRecorder = ({
   }, [stopTimer]);
 
   const discardMediaRecorder = useCallback(() => {
+    console.log("[Mobile Debug - MediaRecorder] discardMediaRecorder called");
     resetTimer();
 
     if (!mediaRecorderRef.current) {

@@ -120,21 +120,39 @@ export default function RecordingControls({
             {appStatus === "recording" ? (
               <>
                 <button
-                  onClick={onPauseRecording}
-                  className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
-                >
-                  <Pause className="w-4 sm:w-5 h-4 sm:h-5" />
-                  <span className="hidden sm:inline">暫停錄音</span>
-                </button>
-                <button
-                  onClick={onDiscardRecording}
+                  onClick={(e) => {
+                    console.log(
+                      "[Mobile Debug] Discard button clicked in recording state",
+                      { target: e.target, currentTarget: e.currentTarget }
+                    );
+                    onDiscardRecording();
+                  }}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-200 border border-red-800/50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
                   <span className="hidden sm:inline">重錄</span>
                 </button>
                 <button
-                  onClick={onCompleteRecording}
+                  onClick={(e) => {
+                    console.log("[Mobile Debug] Pause button clicked", {
+                      target: e.target,
+                      currentTarget: e.currentTarget,
+                    });
+                    onPauseRecording();
+                  }}
+                  className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
+                >
+                  <Pause className="w-4 sm:w-5 h-4 sm:h-5" />
+                  <span className="hidden sm:inline">暫停錄音</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    console.log(
+                      "[Mobile Debug] Complete button clicked in recording state",
+                      { target: e.target, currentTarget: e.currentTarget }
+                    );
+                    onCompleteRecording();
+                  }}
                   className="px-3 sm:px-8 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Check className="w-4 sm:w-5 h-4 sm:h-5" />
@@ -144,21 +162,39 @@ export default function RecordingControls({
             ) : (
               <>
                 <button
-                  onClick={onDiscardRecording}
+                  onClick={(e) => {
+                    console.log(
+                      "[Mobile Debug] Discard button clicked in paused state",
+                      { target: e.target, currentTarget: e.currentTarget }
+                    );
+                    onDiscardRecording();
+                  }}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-red-900/40 hover:bg-red-900/60 text-red-200 border border-red-800/50 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
                   <span className="hidden sm:inline">重錄</span>
                 </button>
                 <button
-                  onClick={onResumeRecording}
+                  onClick={(e) => {
+                    console.log("[Mobile Debug] Resume button clicked", {
+                      target: e.target,
+                      currentTarget: e.currentTarget,
+                    });
+                    onResumeRecording();
+                  }}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 border border-slate-600 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Mic className="w-4 sm:w-5 h-4 sm:h-5 text-sky-400" />
                   <span className="hidden sm:inline">繼續錄音</span>
                 </button>
                 <button
-                  onClick={onCompleteRecording}
+                  onClick={(e) => {
+                    console.log(
+                      "[Mobile Debug] Complete button clicked in paused state",
+                      { target: e.target, currentTarget: e.currentTarget }
+                    );
+                    onCompleteRecording();
+                  }}
                   className="px-3 sm:px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-medium"
                 >
                   <Check className="w-4 sm:w-5 h-4 sm:h-5" />
