@@ -105,7 +105,7 @@ export default function Home() {
         setAppStatus("transcribe-error");
       }
     },
-    [transcribeMode, transcribe, setRetryBlob, clearBlob]
+    [transcribeMode, transcribe, setRetryBlob, clearBlob, userService]
   );
 
   // Called by useMediaRecorder when recording is complete
@@ -130,7 +130,7 @@ export default function Home() {
       // Otherwise, immediately start transcribing
       await transcribeAudioBlob(blob, duration);
     },
-    [setAudioBlob, transcribeAudioBlob]
+    [setAudioBlob, transcribeAudioBlob, userService]
   );
 
   const {
@@ -145,10 +145,6 @@ export default function Home() {
   } = useMediaRecorder({
     onRecordingComplete: handleRecordingCompletedAndTranscribe,
   });
-
-  const handleApiKeySaved = useCallback(() => {
-    setIsMissingApiKey(false);
-  }, []);
 
   const handleCompleteRecording = useCallback(() => {
     console.log("[Mobile Debug - Page] handleCompleteRecording called", {

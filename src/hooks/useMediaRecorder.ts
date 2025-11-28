@@ -12,6 +12,7 @@ export const useMediaRecorder = ({
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const finalDurationRef = useRef<number>(0); // Store duration when recording completes
+  const shouldCallOnCompleteRef = useRef<boolean>(true); // Flag to control if onstop should trigger callback
 
   const {
     duration,
@@ -41,11 +42,18 @@ export const useMediaRecorder = ({
           console.log("[Mobile Debug - MediaRecorder] onstop called", {
             hasChunks: chunksRef.current.length > 0,
             duration: finalDurationRef.current,
+            shouldCallOnComplete: shouldCallOnCompleteRef.current,
           });
-          const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
-          const blob = new Blob(chunksRef.current, { type: mimeType });
-          onRecordingComplete?.(blob, finalDurationRef.current);
+
+          // Only call onRecordingComplete if not discarded
+          if (shouldCallOnCompleteRef.current) {
+            const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
+            const blob = new Blob(chunksRef.current, { type: mimeType });
+            onRecordingComplete(blob, finalDurationRef.current);
+          }
+
           chunksRef.current = [];
+          shouldCallOnCompleteRef.current = true; // Reset flag
         };
       } catch (err) {
         console.error(err);
@@ -55,6 +63,7 @@ export const useMediaRecorder = ({
 
   const startMediaRecorder = useCallback(() => {
     chunksRef.current = [];
+    shouldCallOnCompleteRef.current = true; // Enable callback
 
     if (!mediaRecorderRef.current) {
       return;
@@ -65,8 +74,16 @@ export const useMediaRecorder = ({
   }, [startTimer]);
 
   const pauseMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] pauseMediaRecorder called");
-    if (!mediaRecorderRef.current) {
+    console.log("[Mobile Debug - MediaRecorder] pauseMediaRecorder called", {
+      state: mediaRecorderRef.current?.state,
+    });
+    if (
+      !mediaRecorderRef.current ||
+      mediaRecorderRef.current.state !== "recording"
+    ) {
+      console.log(
+        "[Mobile Debug - MediaRecorder] Cannot pause - not in recording state"
+      );
       return;
     }
 
@@ -75,8 +92,16 @@ export const useMediaRecorder = ({
   }, [pauseTimer]);
 
   const resumeMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] resumeMediaRecorder called");
-    if (!mediaRecorderRef.current) {
+    console.log("[Mobile Debug - MediaRecorder] resumeMediaRecorder called", {
+      state: mediaRecorderRef.current?.state,
+    });
+    if (
+      !mediaRecorderRef.current ||
+      mediaRecorderRef.current.state !== "paused"
+    ) {
+      console.log(
+        "[Mobile Debug - MediaRecorder] Cannot resume - not in paused state"
+      );
       return;
     }
 
@@ -85,33 +110,49 @@ export const useMediaRecorder = ({
   }, [resumeTimer]);
 
   const stopMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] stopMediaRecorder called");
-    if (!mediaRecorderRef.current) {
+    console.log("[Mobile Debug - MediaRecorder] stopMediaRecorder called", {
+      state: mediaRecorderRef.current?.state,
+    });
+    if (
+      !mediaRecorderRef.current ||
+      (mediaRecorderRef.current.state !== "recording" &&
+        mediaRecorderRef.current.state !== "paused")
+    ) {
+      console.log(
+        "[Mobile Debug - MediaRecorder] Cannot stop - not in recording/paused state"
+      );
       return;
     }
 
     // Get duration from stopTimer and store it for use in onstop callback
     finalDurationRef.current = stopTimer();
+    shouldCallOnCompleteRef.current = true; // Ensure callback is enabled for normal stop
     mediaRecorderRef.current.stop();
   }, [stopTimer]);
 
   const discardMediaRecorder = useCallback(() => {
-    console.log("[Mobile Debug - MediaRecorder] discardMediaRecorder called");
+    console.log("[Mobile Debug - MediaRecorder] discardMediaRecorder called", {
+      state: mediaRecorderRef.current?.state,
+    });
     resetTimer();
+    shouldCallOnCompleteRef.current = false; // Disable callback for this stop
 
     if (!mediaRecorderRef.current) {
       chunksRef.current = [];
       return;
     }
 
-    const originalOnStop = mediaRecorderRef.current.onstop;
-    mediaRecorderRef.current.onstop = null;
-    mediaRecorderRef.current.stop();
-
-    setTimeout(() => {
-      mediaRecorderRef.current!.onstop = originalOnStop;
+    // Only stop if currently recording or paused
+    if (
+      mediaRecorderRef.current.state === "recording" ||
+      mediaRecorderRef.current.state === "paused"
+    ) {
+      // Stop the recorder - onstop will be called but won't trigger callback due to shouldCallOnCompleteRef flag
+      mediaRecorderRef.current.stop();
+    } else {
+      // Already stopped, just clear chunks
       chunksRef.current = [];
-    }, 0);
+    }
   }, [resetTimer]);
 
   // Get preview blob from current chunks (used when paused)
