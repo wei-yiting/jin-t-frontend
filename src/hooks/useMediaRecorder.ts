@@ -16,6 +16,7 @@ export const useMediaRecorder = ({
   const finalDurationRef = useRef<number>(0); // Store duration when recording completes
   const shouldCallOnCompleteRef = useRef<boolean>(true); // Flag to control if onstop should trigger callback
   const cleanupFnsRef = useRef<(() => void)[]>([]); // Store cleanup functions for event listeners
+  const stopListenerCleanupRef = useRef<(() => void) | null>(null); // Separate cleanup for stop listener
 
   const {
     duration,
@@ -31,6 +32,13 @@ export const useMediaRecorder = ({
     // Execute all cleanup functions to remove event listeners
     cleanupFnsRef.current.forEach((cleanup) => cleanup());
     cleanupFnsRef.current = [];
+
+    // Cleanup stop listener separately since this event listener is rebinded whenever callbacks change
+    // Usually caused by transcribeMode changes thus onRecordingComplete change
+    if (stopListenerCleanupRef.current) {
+      stopListenerCleanupRef.current();
+      stopListenerCleanupRef.current = null;
+    }
 
     // Stop and cleanup MediaRecorder
     if (mediaRecorderRef.current) {
@@ -62,7 +70,7 @@ export const useMediaRecorder = ({
   // stop audio tracks due to resource management (e.g., when paused for too long).
   // This prevents sending corrupted/empty audio to transcription
   // and notify the user to restart recording.
-  const setupAudioTrackListeners = useCallback(
+  const setupStreamTrackEndListeners = useCallback(
     (stream: MediaStream) => {
       const handleTrackEnded = () => {
         shouldCallOnCompleteRef.current = false; // Set flag to prevent sending corrupted audio
@@ -81,50 +89,59 @@ export const useMediaRecorder = ({
     [onRecordingError]
   );
 
-  const setupDataAvailableListener = useCallback((recorder: MediaRecorder) => {
-    const handleDataAvailable = (event: BlobEvent) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
-      }
-    };
-
-    recorder.addEventListener("dataavailable", handleDataAvailable);
-    cleanupFnsRef.current.push(() => {
-      recorder.removeEventListener("dataavailable", handleDataAvailable);
-    });
-  }, []);
-
-  const setupStopListener = useCallback(
+  const setupRecorderDataAvailableListener = useCallback(
     (recorder: MediaRecorder) => {
-      const handleStop = () => {
-        const totalSize = chunksRef.current.reduce(
-          (acc, chunk) => acc + (chunk as Blob).size,
-          0
-        );
-
-        // Only call onRecordingComplete if:
-        // 1. Not discarded (shouldCallOnComplete is true)
-        // 2. Has valid audio data (totalSize > 100 bytes - minimum valid audio file)
-        if (shouldCallOnCompleteRef.current && totalSize > 100) {
-          const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
-          const blob = new Blob(chunksRef.current, { type: mimeType });
-          onRecordingComplete(blob, finalDurationRef.current);
-        } else if (shouldCallOnCompleteRef.current && totalSize <= 100) {
-          onRecordingError(
-            "錄音檔案過小或損毀，請確認麥克風正常運作後重新錄音"
-          );
+      const handleDataAvailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
         }
-
-        chunksRef.current = [];
-        shouldCallOnCompleteRef.current = true; // Reset flag
       };
 
-      recorder.addEventListener("stop", handleStop);
+      recorder.addEventListener("dataavailable", handleDataAvailable);
       cleanupFnsRef.current.push(() => {
-        recorder.removeEventListener("stop", handleStop);
+        recorder.removeEventListener("dataavailable", handleDataAvailable);
       });
     },
-    [onRecordingComplete, onRecordingError]
+    []
+  );
+
+  // Handle stop event logic
+  const handleRecorderStop = useCallback(() => {
+    const totalSize = chunksRef.current.reduce(
+      (acc, chunk) => acc + (chunk as Blob).size,
+      0
+    );
+
+    // Only call onRecordingComplete if:
+    // 1. Not discarded (shouldCallOnComplete is true)
+    // 2. Has valid audio data (totalSize > 100 bytes - minimum valid audio file)
+    if (shouldCallOnCompleteRef.current && totalSize > 100) {
+      const mimeType = mediaRecorderRef.current?.mimeType ?? "audio/webm";
+      const blob = new Blob(chunksRef.current, { type: mimeType });
+      onRecordingComplete(blob, finalDurationRef.current);
+    } else if (shouldCallOnCompleteRef.current && totalSize <= 100) {
+      onRecordingError("錄音檔案過小或損毀，請確認麥克風正常運作後重新錄音");
+    }
+
+    chunksRef.current = [];
+    shouldCallOnCompleteRef.current = true; // Reset flag
+  }, [onRecordingComplete, onRecordingError]);
+
+  // Bind stop listener to current recorder
+  const bindRecorderStopListener = useCallback(
+    (recorder: MediaRecorder) => {
+      // Remove old stop listener if exists
+      if (stopListenerCleanupRef.current) {
+        stopListenerCleanupRef.current();
+      }
+
+      // Add new stop listener
+      recorder.addEventListener("stop", handleRecorderStop);
+      stopListenerCleanupRef.current = () => {
+        recorder.removeEventListener("stop", handleRecorderStop);
+      };
+    },
+    [handleRecorderStop]
   );
 
   // Setup MediaRecorder with stream and event listeners
@@ -140,10 +157,10 @@ export const useMediaRecorder = ({
       streamRef.current = stream;
       mediaRecorderRef.current = new MediaRecorder(stream);
 
-      // Setup all event listeners
-      setupAudioTrackListeners(stream);
-      setupDataAvailableListener(mediaRecorderRef.current);
-      setupStopListener(mediaRecorderRef.current);
+      // Setup event listeners
+      setupStreamTrackEndListeners(stream);
+      setupRecorderDataAvailableListener(mediaRecorderRef.current);
+      bindRecorderStopListener(mediaRecorderRef.current);
 
       return { success: true };
     } catch (err) {
@@ -151,10 +168,23 @@ export const useMediaRecorder = ({
     }
   }, [
     cleanupExistingInstancesAndEventListeners,
-    setupAudioTrackListeners,
-    setupDataAvailableListener,
-    setupStopListener,
+    setupStreamTrackEndListeners,
+    setupRecorderDataAvailableListener,
+    bindRecorderStopListener,
   ]);
+
+  // Re-bind stop listener when callbacks change to avoid stale closure
+  // This solves the issue where transcribeMode changes during recording
+  // but the old value is still captured in the listener
+  useEffect(
+    function rebindUpdatedRecorderStopListenerOnCallbackChange() {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder) return;
+
+      bindRecorderStopListener(recorder);
+    },
+    [bindRecorderStopListener]
+  );
 
   const startMediaRecorder = useCallback(async () => {
     chunksRef.current = [];
