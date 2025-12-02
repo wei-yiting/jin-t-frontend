@@ -10,14 +10,20 @@ export type AppStatus =
   | "transcribed" // Transcribed completed, can continue or reset
   | "transcribe-error"; // Transcribe failed, can retry or re-record
 
-export interface TranscribeRequest {
-  audio_file: Blob;
-  openai_api_key: string; // TODO: Remove when supabae db store api key
-  transcribe_mode: TranscribeMode;
-  audio_duration?: string;
+export interface UserSettings {
+  deviceId: string;
+  useOwnApiKey: boolean;
+  allowDataCollection: boolean;
+  customOpenaiApiKey?: string;
 }
 
+export interface TranscribeParams {
+  audioFile: Blob;
+  transcribeMode: TranscribeMode;
+  audioDuration?: string;
+}
 export interface TranscribeResponse {
+  process_id: string;
   transcript: string;
   // Add other potential fields from backend response if needed
 }

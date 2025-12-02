@@ -74,28 +74,18 @@ export default function Home() {
 
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
-    async (blob: Blob, duration?: number) => {
-      // Check if API key is set
-      if (!userService.checkHasPersonalApiKey()) {
-        setIsSettingsOpen(true);
-        return;
-      }
-
-      const openaiApiKey = await userService.getAndDecodeOpenaiApiKey();
-
+    async (audioBlob: Blob, audioDuration?: number) => {
       try {
         setAppStatus("transcribing");
-        await transcribe({
-          audio_file: blob,
-          openai_api_key: openaiApiKey,
-          transcribe_mode: transcribeMode,
-          audio_duration:
-            duration && duration > 0 ? duration.toFixed(2) : undefined,
-        });
+        await transcribe(
+          audioBlob,
+          transcribeMode,
+          audioDuration ? audioDuration : null
+        );
         setAppStatus("transcribed");
         clearBlob();
       } catch (error) {
-        setRetryBlob(blob);
+        setRetryBlob(audioBlob);
         setAppStatus("transcribe-error");
       }
     },

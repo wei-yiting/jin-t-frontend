@@ -1,6 +1,10 @@
 import { localStorageClient, LocalStorageClient } from "./localstorageClient";
 import { httpClient } from "./httpClient";
-import { USER_INFO_KEYS, CheckIsOpenaiApiKeyValidResponse } from "@/src/types";
+import {
+  USER_INFO_KEYS,
+  CheckIsOpenaiApiKeyValidResponse,
+  UserSettings,
+} from "@/src/types";
 import { API_ENDPOINTS } from "@/src/constants";
 
 class UserService {
@@ -211,6 +215,21 @@ class UserService {
         error
       );
     }
+  }
+
+  async getUserSettings(): Promise<UserSettings> {
+    const isUsingPersonalApiKey = await this.getIsUsingPersonalApiKey();
+
+    const userSettings: UserSettings = {
+      deviceId: await this.getOrCreateDeviceId(),
+      useOwnApiKey: isUsingPersonalApiKey,
+      allowDataCollection: await this.getOrSetDefaultConsentDataCollection(),
+      customOpenaiApiKey: isUsingPersonalApiKey
+        ? await this.getAndDecodeOpenaiApiKey()
+        : null,
+    };
+
+    return userSettings;
   }
 }
 

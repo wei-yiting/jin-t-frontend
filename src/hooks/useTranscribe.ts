@@ -1,37 +1,79 @@
 import { useState, useCallback } from "react";
-import { transcribeService } from "@/src/services/transcribeService";
-import { TranscribeRequest } from "@/src/types";
+import { transcribeService, userService } from "@/src/services";
+import { TranscribeMode, UserSettings } from "@/src/types";
 
 export const useTranscribe = () => {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const transcribe = useCallback(async (request: TranscribeRequest) => {
-    setIsTranscribing(true);
-    setError(null);
+  const transcribe = useCallback(
+    async (audioFile: Blob, mode: TranscribeMode, duration: number | null) => {
+      const isUsingPersonalApiKey =
+        await userService.getIsUsingPersonalApiKey();
+      const hasPersonalApiKey = await userService.checkHasPersonalApiKey();
+      const consentDataCollection =
+        await userService.getOrSetDefaultConsentDataCollection();
 
-    try {
-      const response = await transcribeService.transcribe(request);
-      const newText = response.transcript;
+      if (
+        !consentDataCollection &&
+        !(isUsingPersonalApiKey && hasPersonalApiKey)
+      ) {
+        setError(
+          "如果不想用自己的 OpenAI API Key ，在設定中勾選同意我們蒐集您資料優化晶晶體，也可以免費使用晶晶體語音轉文字功能！"
+        );
+        return;
+      }
 
-      setTranscriptText((prev) => {
-        if (prev) {
-          return prev + "\n" + newText;
-        }
+      if (isUsingPersonalApiKey && !hasPersonalApiKey) {
+        setError(
+          "您勾選了使用自己的 OpenAI API Key ，但尚未設定，請先設定 OpenAI API Key；如果不想用自己的 OpenAI API Key ，在設定中勾選同意我們蒐集您資料優化晶晶體，也可以免費使用晶晶體語音轉文字功能喔！"
+        );
+        return;
+      }
+
+      setIsTranscribing(true);
+      setError(null);
+
+      try {
+        const userSettings: UserSettings = {
+          deviceId: await userService.getOrCreateDeviceId(),
+          useOwnApiKey: isUsingPersonalApiKey,
+          allowDataCollection: consentDataCollection,
+          customOpenaiApiKey: isUsingPersonalApiKey
+            ? await userService.getAndDecodeOpenaiApiKey()
+            : null,
+        };
+        const transcribeResponse = await transcribeService.transcribe(
+          {
+            audioFile: audioFile,
+            transcribeMode: mode,
+            audioDuration: duration ? duration.toFixed(2) : null,
+          },
+          userSettings
+        );
+        const newText = transcribeResponse.transcript;
+
+        setTranscriptText((prev) => {
+          if (prev) {
+            return prev + "\n" + newText;
+          }
+          return newText;
+        });
+
         return newText;
-      });
-
-      return newText;
-    } catch (err: unknown) {
-      const errorMessage =
-        (err as { message?: string })?.message || "Failed to transcribe audio";
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, []);
+      } catch (err: unknown) {
+        const errorMessage =
+          (err as { message?: string })?.message ||
+          "Failed to transcribe audio";
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsTranscribing(false);
+      }
+    },
+    []
+  );
 
   const clearTranscript = useCallback(() => {
     setTranscriptText(null);
