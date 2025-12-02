@@ -16,14 +16,11 @@ import { userService } from "@/src/services/userService";
 import { DEFAULT_MODE } from "@/src/constants";
 import { TranscribeMode, AppStatus } from "@/src/types";
 
-const SUPPORT_MESSAGE =
-  "瀏覽器不支援或未授權使用麥克風，請改用最新版本的 Chrome。";
-const NO_KEY_MESSAGE = "請先設定 OpenAI API Key 才能使用轉錄功能。";
-
 export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
-  const [isMissingApiKey, setIsMissingApiKey] = useState(false);
+  const [completeSettingsRequired, setIsCompleteSettingsRequired] =
+    useState(false);
   const [isRecorderUnsupported, setIsRecorderUnsupported] = useState(false);
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
@@ -59,16 +56,30 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(function checkAndSetIsMissingApiKey() {
+  useEffect(function checkIsCompleteSettingsRequired() {
     (async () => {
-      const isUsingPersonalApiKey =
-        await userService.getIsUsingPersonalApiKey();
-      if (!isUsingPersonalApiKey) {
+      const { useOwnApiKey, allowDataCollection, customOpenaiApiKey } =
+        await userService.getUserSettings();
+
+      if (!useOwnApiKey && !allowDataCollection) {
+        setIsCompleteSettingsRequired(true);
         return;
       }
 
-      const hasPersonalApiKey = await userService.checkHasPersonalApiKey();
-      setIsMissingApiKey(!hasPersonalApiKey);
+      if (useOwnApiKey) {
+        if (!customOpenaiApiKey) {
+          setIsCompleteSettingsRequired(true);
+          return;
+        }
+
+        const isValidApiKey = await userService.checkIsOpenaiApiKeyValid(
+          customOpenaiApiKey
+        );
+        if (!isValidApiKey) {
+          setIsCompleteSettingsRequired(true);
+          return;
+        }
+      }
     })();
   }, []);
 
@@ -233,13 +244,14 @@ export default function Home() {
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
           {isRecorderUnsupported && (
             <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
-              {SUPPORT_MESSAGE}
+              瀏覽器不支援或未授權使用麥克風，請重新整理並授權同意只用麥克風，如無法授權請改用最新版本的
+              Chrome。
             </div>
           )}
 
-          {!isRecorderUnsupported && isMissingApiKey && (
+          {!isRecorderUnsupported && completeSettingsRequired && (
             <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-yellow-100">
-              <span>{NO_KEY_MESSAGE}</span>
+              <span>請先開啟設定，完成設定後才能使用轉錄功能。</span>
               <PrimaryButton
                 label="開啟設定"
                 onClick={() => setIsSettingsOpen(true)}
@@ -312,7 +324,7 @@ export default function Home() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onModalClose={() => setIsSettingsOpen(false)}
-        onValidApiKeySaved={() => setIsMissingApiKey(false)}
+        onSettingsSaved={() => setIsCompleteSettingsRequired(false)}
       />
 
       <ConfirmModal

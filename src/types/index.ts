@@ -1,4 +1,5 @@
 export type TranscribeMode = "fast" | "standard" | "refined";
+export type BillingOption = "free" | "byok";
 
 // Application-level status (complete user flow)
 export type AppStatus =
@@ -44,7 +45,7 @@ export const LOCAL_STORAGE_KEYS = {
   ...USER_INFO_KEYS,
 } as const;
 
-export interface CheckIsOpenaiApiKeyValidResponse {
+export interface ValidateOpenaiApiKeyResponse {
   is_api_key_valid: boolean;
   has_unexpectied_validation_error: boolean;
 }

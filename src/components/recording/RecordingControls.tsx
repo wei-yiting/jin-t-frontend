@@ -1,7 +1,6 @@
 import { AppStatus } from "@/src/types";
 import WaveformAnimation from "../ui/WaveformAnimation";
 import PrimaryButton from "../buttons/PrimaryButton";
-import IconButton from "../buttons/IconButton";
 import {
   Mic,
   Upload,
