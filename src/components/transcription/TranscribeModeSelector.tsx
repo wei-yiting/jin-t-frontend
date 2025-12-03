@@ -66,7 +66,7 @@ export default function TranscribeModeSelector({
           disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-800/30"
         }`}
       >
-        <span className="flex items-center gap-1.5 text-xs">
+        <span className="flex items-center gap-1.5 text-sm">
           {MODE_ICONS[value]}
           {selectedMode.label}
         </span>
@@ -99,7 +99,7 @@ export default function TranscribeModeSelector({
                   <span className="block text-sm font-medium">
                     {mode.label}
                   </span>
-                  <span className="block text-xs text-slate-400">
+                  <span className="block text-sm text-slate-400">
                     {MODE_DESCRIPTIONS[modeValue]}
                   </span>
                 </span>

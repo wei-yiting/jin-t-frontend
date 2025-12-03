@@ -1,6 +1,10 @@
 import { localStorageClient, LocalStorageClient } from "./localstorageClient";
 import { httpClient } from "./httpClient";
-import { USER_INFO_KEYS, CheckIsOpenaiApiKeyValidResponse } from "@/src/types";
+import {
+  USER_INFO_KEYS,
+  ValidateOpenaiApiKeyResponse,
+  UserSettings,
+} from "@/src/types";
 import { API_ENDPOINTS } from "@/src/constants";
 
 class UserService {
@@ -49,7 +53,7 @@ class UserService {
 
   async checkIsOpenaiApiKeyValid(
     openaiApiKey: string
-  ): Promise<CheckIsOpenaiApiKeyValidResponse> {
+  ): Promise<ValidateOpenaiApiKeyResponse> {
     const trimmedOpenaiApiKey = openaiApiKey.trim();
     if (!trimmedOpenaiApiKey) {
       return {
@@ -59,8 +63,8 @@ class UserService {
     }
 
     try {
-      const response = await httpClient.post<CheckIsOpenaiApiKeyValidResponse>(
-        API_ENDPOINTS.CHECK_OPENAI_API_KEY,
+      const response = await httpClient.post<ValidateOpenaiApiKeyResponse>(
+        API_ENDPOINTS.VALIDATE_OPENAI_API_KEY,
         { openai_api_key: trimmedOpenaiApiKey }
       );
 
@@ -180,7 +184,7 @@ class UserService {
     }
 
     if (consentDataCollection === null) {
-      consentDataCollection = false; // Default to false so we can prompt user to consent to data collection
+      consentDataCollection = false; // Default to false to make sure user fully consent to data collection
       try {
         await this.storage.set(
           USER_INFO_KEYS.CONSENT_DATA_COLLECTION,
@@ -211,6 +215,19 @@ class UserService {
         error
       );
     }
+  }
+
+  async getUserSettings(): Promise<UserSettings> {
+    const isUsingPersonalApiKey = await this.getIsUsingPersonalApiKey();
+
+    const userSettings: UserSettings = {
+      deviceId: await this.getOrCreateDeviceId(),
+      useOwnApiKey: isUsingPersonalApiKey,
+      allowDataCollection: await this.getOrSetDefaultConsentDataCollection(),
+      customOpenaiApiKey: await this.getAndDecodeOpenaiApiKey(),
+    };
+
+    return userSettings;
   }
 }
 

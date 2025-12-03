@@ -16,14 +16,11 @@ import { userService } from "@/src/services/userService";
 import { DEFAULT_MODE } from "@/src/constants";
 import { TranscribeMode, AppStatus } from "@/src/types";
 
-const SUPPORT_MESSAGE =
-  "瀏覽器不支援或未授權使用麥克風，請改用最新版本的 Chrome。";
-const NO_KEY_MESSAGE = "請先設定 OpenAI API Key 才能使用轉錄功能。";
-
 export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
-  const [isMissingApiKey, setIsMissingApiKey] = useState(false);
+  const [completeSettingsRequired, setIsCompleteSettingsRequired] =
+    useState(false);
   const [isRecorderUnsupported, setIsRecorderUnsupported] = useState(false);
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
@@ -59,43 +56,47 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(function checkAndSetIsMissingApiKey() {
+  useEffect(function checkIsCompleteSettingsRequired() {
     (async () => {
-      const isUsingPersonalApiKey =
-        await userService.getIsUsingPersonalApiKey();
-      if (!isUsingPersonalApiKey) {
+      const { useOwnApiKey, allowDataCollection, customOpenaiApiKey } =
+        await userService.getUserSettings();
+
+      if (!useOwnApiKey && !allowDataCollection) {
+        setIsCompleteSettingsRequired(true);
         return;
       }
 
-      const hasPersonalApiKey = await userService.checkHasPersonalApiKey();
-      setIsMissingApiKey(!hasPersonalApiKey);
+      if (useOwnApiKey) {
+        if (!customOpenaiApiKey) {
+          setIsCompleteSettingsRequired(true);
+          return;
+        }
+
+        const isValidApiKey = await userService.checkIsOpenaiApiKeyValid(
+          customOpenaiApiKey
+        );
+        if (!isValidApiKey) {
+          setIsCompleteSettingsRequired(true);
+          return;
+        }
+      }
     })();
   }, []);
 
   // Transcribe the given blob (shared logic for recording and upload)
   const transcribeAudioBlob = useCallback(
-    async (blob: Blob, duration?: number) => {
-      // Check if API key is set
-      if (!userService.checkHasPersonalApiKey()) {
-        setIsSettingsOpen(true);
-        return;
-      }
-
-      const openaiApiKey = await userService.getAndDecodeOpenaiApiKey();
-
+    async (audioBlob: Blob, audioDuration?: number) => {
       try {
         setAppStatus("transcribing");
-        await transcribe({
-          audio_file: blob,
-          openai_api_key: openaiApiKey,
-          transcribe_mode: transcribeMode,
-          audio_duration:
-            duration && duration > 0 ? duration.toFixed(2) : undefined,
-        });
+        await transcribe(
+          audioBlob,
+          transcribeMode,
+          audioDuration ? audioDuration : null
+        );
         setAppStatus("transcribed");
         clearBlob();
       } catch (error) {
-        setRetryBlob(blob);
+        setRetryBlob(audioBlob);
         setAppStatus("transcribe-error");
       }
     },
@@ -242,14 +243,15 @@ export default function Home() {
       <section className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0">
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
           {isRecorderUnsupported && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
-              {SUPPORT_MESSAGE}
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
+              瀏覽器不支援或未授權使用麥克風，請重新整理並授權同意只用麥克風，如無法授權請改用最新版本的
+              Chrome。
             </div>
           )}
 
-          {!isRecorderUnsupported && isMissingApiKey && (
-            <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-yellow-100">
-              <span>{NO_KEY_MESSAGE}</span>
+          {!isRecorderUnsupported && completeSettingsRequired && (
+            <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-base text-yellow-100">
+              <span>請先開啟設定，完成設定後才能使用轉錄功能。</span>
               <PrimaryButton
                 label="開啟設定"
                 onClick={() => setIsSettingsOpen(true)}
@@ -258,16 +260,16 @@ export default function Home() {
           )}
 
           {recordingError && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
               <p className="font-medium mb-1">錄音錯誤</p>
-              <p className="text-red-300 text-xs">{recordingError}</p>
+              <p className="text-red-300 text-sm">{recordingError}</p>
             </div>
           )}
 
           {transcribeError && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
               <p className="font-medium mb-1">轉錄失敗</p>
-              <p className="text-red-300 text-xs">{transcribeError}</p>
+              <p className="text-red-300 text-sm">{transcribeError}</p>
             </div>
           )}
 
@@ -322,7 +324,7 @@ export default function Home() {
       <SettingsModal
         isOpen={isSettingsOpen}
         onModalClose={() => setIsSettingsOpen(false)}
-        onValidApiKeySaved={() => setIsMissingApiKey(false)}
+        onSettingsSaved={() => setIsCompleteSettingsRequired(false)}
       />
 
       <ConfirmModal
