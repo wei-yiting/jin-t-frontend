@@ -64,7 +64,7 @@ export const ConfirmModal = ({
         <div className="flex gap-3">
           <button
             onClick={onConfirm}
-            className="flex-1 px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2 border bg-yellow-600/80 hover:bg-yellow-600 text-slate-100 border-yellow-500/50 hover:border-yellow-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500"
+            className="flex-1 px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-all flex items-center justify-center gap-2 border bg-yellow-600/80 hover:bg-yellow-600 text-slate-100 border-yellow-500/50 hover:border-yellow-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-slate-500"
           >
             確認
           </button>

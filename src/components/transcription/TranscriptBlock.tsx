@@ -35,14 +35,14 @@ export default function TranscriptBlock({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-200">文字結果</span>
+        <span className="text-base font-medium text-slate-200">文字結果</span>
       </div>
       <div className="relative bg-slate-800/50 rounded-xl p-4">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(event) => onChange?.(event.target.value)}
-          className="w-full bg-transparent text-slate-100 text-sm leading-relaxed outline-none resize-none placeholder-slate-500 min-h-[120px]"
+          className="w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none resize-none placeholder-slate-500 min-h-[120px]"
           placeholder="轉錄結果將顯示在此處..."
         />
         <button

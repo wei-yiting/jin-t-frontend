@@ -36,7 +36,7 @@ export default function CopyTranscriptButton({
   return (
     <button
       onClick={handleCopyTranscript}
-      className={`bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all duration-300 ease-in-out text-sm font-medium flex items-center justify-center gap-2 ${
+      className={`bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-lg border border-slate-600 transition-all duration-300 ease-in-out text-base font-medium flex items-center justify-center gap-2 ${
         shouldDisplayButton
           ? "opacity-100 w-auto aspect-square shrink-0 sm:aspect-auto sm:w-[35%] px-4 py-4"
           : "opacity-0 w-0 min-w-0 h-0 min-h-0 p-0 m-0 overflow-hidden pointer-events-none aspect-auto -mr-3"

@@ -11,7 +11,7 @@ export default function Header({ onOpenSettings }: HeaderProps) {
         <h1 className="text-2xl sm:text-3xl font-semibold text-slate-100">
           晶晶體
         </h1>
-        <p className="text-xs text-slate-400 mt-1">中英夾雜語音輸入</p>
+        <p className="text-sm text-slate-400 mt-1">中英夾雜語音輸入</p>
       </div>
       <button
         onClick={onOpenSettings}

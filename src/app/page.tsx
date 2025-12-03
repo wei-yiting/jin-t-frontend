@@ -243,14 +243,14 @@ export default function Home() {
       <section className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0">
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
           {isRecorderUnsupported && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
               瀏覽器不支援或未授權使用麥克風，請重新整理並授權同意只用麥克風，如無法授權請改用最新版本的
               Chrome。
             </div>
           )}
 
           {!isRecorderUnsupported && completeSettingsRequired && (
-            <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-yellow-100">
+            <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-base text-yellow-100">
               <span>請先開啟設定，完成設定後才能使用轉錄功能。</span>
               <PrimaryButton
                 label="開啟設定"
@@ -260,16 +260,16 @@ export default function Home() {
           )}
 
           {recordingError && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
               <p className="font-medium mb-1">錄音錯誤</p>
-              <p className="text-red-300 text-xs">{recordingError}</p>
+              <p className="text-red-300 text-sm">{recordingError}</p>
             </div>
           )}
 
           {transcribeError && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-sm text-red-200">
+            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
               <p className="font-medium mb-1">轉錄失敗</p>
-              <p className="text-red-300 text-xs">{transcribeError}</p>
+              <p className="text-red-300 text-sm">{transcribeError}</p>
             </div>
           )}
 
