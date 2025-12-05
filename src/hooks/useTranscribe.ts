@@ -35,12 +35,12 @@ export const useTranscribe = () => {
         return;
       }
 
-      if(audioFile.size > MAX_AUDIO_FILE_SIZE) {
+      if (audioFile.size > MAX_AUDIO_FILE_SIZE) {
         setError("音檔大小超過 25MB，請重新錄音");
         return;
       }
 
-      if(!isUsingPersonalApiKey && duration > FREE_TIER_MAX_AUDIO_DURATION) {
+      if (!isUsingPersonalApiKey && duration > FREE_TIER_MAX_AUDIO_DURATION) {
         setError("免費方案每次錄音最長 10 分鐘，請重新錄音");
         return;
       }
@@ -101,9 +101,10 @@ export const useTranscribe = () => {
   return {
     isTranscribing,
     transcriptText,
-    error,
+    transcribeError: error,
     transcribe,
     clearTranscript,
     setTranscriptText: setManualTranscript,
+    setTranscribeError: setError,
   };
 };

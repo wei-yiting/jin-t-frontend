@@ -9,12 +9,12 @@ interface ConfirmModalProps {
   onCancel: () => void;
 }
 
-export const ConfirmModal = ({
+export default function ConfirmModal({
   isOpen,
   message,
   onConfirm,
   onCancel,
-}: ConfirmModalProps) => {
+}: ConfirmModalProps) {
   useEffect(() => {
     if (!isOpen) return;
 
@@ -78,4 +78,4 @@ export const ConfirmModal = ({
       </div>
     </div>
   );
-};
+}
