@@ -235,12 +235,12 @@ export default function Home() {
   }, [clearBlob, clearTranscript]);
 
   return (
-    <div className="h-screen flex flex-col bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+    <div className="h-dvh flex flex-col bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <section className="shrink-0 border-b border-slate-800 px-4 sm:px-6 md:px-8 lg:px-12 py-4">
         <Header onOpenSettings={() => setIsSettingsOpen(true)} />
       </section>
 
-      <section className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0">
+      <section className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0 custom-scrollbar">
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
           {isRecorderUnsupported && (
             <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
