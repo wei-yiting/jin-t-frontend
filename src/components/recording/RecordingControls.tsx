@@ -24,7 +24,7 @@ interface RecordingControlsProps {
   onStartTranscribe?: () => void;
   onDiscardAudio?: () => void;
   onStartNextRecording: () => void;
-  onResetButtonClieck: () => void;
+  onResetButtonClick: () => void;
   onRetryTranscribe?: () => void;
   onReRecord?: () => void;
   mediaStream: MediaStream | null;
@@ -69,7 +69,7 @@ export default function RecordingControls({
   onStartTranscribe,
   onDiscardAudio,
   onStartNextRecording,
-  onResetButtonClieck,
+  onResetButtonClick,
   onRetryTranscribe,
   onReRecord,
   mediaStream,
@@ -239,7 +239,7 @@ export default function RecordingControls({
         <div className="flex gap-3 w-full transition-all duration-300 ease-in-out">
           <button
             type="button"
-            onClick={createIntentionalButtonHandler(onResetButtonClieck)}
+            onClick={createIntentionalButtonHandler(onResetButtonClick)}
             className="w-[40%] sm:w-[30%] px-4 py-3 sm:py-4 bg-slate-800/60 hover:bg-slate-700/60 text-slate-100 rounded-lg border border-slate-700/70 hover:border-slate-600/70 transition-all text-sm sm:text-base font-medium flex items-center justify-center gap-2 shrink-0"
           >
             <RotateCcw className="w-4 h-4" />

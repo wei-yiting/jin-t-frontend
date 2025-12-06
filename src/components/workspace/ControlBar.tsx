@@ -4,7 +4,7 @@ import { DEFAULT_MODE } from "@/src/constants";
 import { AppStatus, TranscribeMode } from "@/src/types";
 import { useMediaRecorder, useAudioBlob } from "@/src/hooks";
 import { userService } from "@/src/services/userService";
-import TranscribeModeSelector from "../transcription/TranscribeModeSelector";
+import TranscribeModeSelector from "../transcribe/TranscribeModeSelector";
 import RecordingControls from "../recording/RecordingControls";
 import CopyTranscriptButton from "../buttons/CopyTranscriptButton";
 import ConfirmModal from "../modal/ConfirmModal";
@@ -18,7 +18,7 @@ interface ControlBarProps {
     audioFile: Blob,
     mode: TranscribeMode,
     duration: number | null
-  ) => Promise<string>;
+  ) => Promise<void>;
   setTranscribeError: (error: string | null) => void;
   clearTranscript: () => void;
 }
@@ -220,7 +220,7 @@ export default function ControlBar({
               onStartTranscribe={handleUploadedAudioTranscribe}
               onDiscardAudio={handleUploadedAudioDiscard}
               onStartNextRecording={handleStartNextRecording}
-              onResetButtonClieck={() => setIsConfirmResetOpen(true)}
+              onResetButtonClick={() => setIsConfirmResetOpen(true)}
               onRetryTranscribe={handleRetryTranscribe}
               onReRecord={handleReRecord}
               mediaStream={mediaStreamRef?.current ?? null}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Header from "@/src/components/layout/Header";
-import TranscriptBlock from "@/src/components/transcription/TranscriptBlock";
+import TranscriptBlock from "@/src/components/transcript/TranscriptBlock";
 import SettingsModal from "@/src/components/modal/SettingsModal";
 import PrimaryButton from "@/src/components/buttons/PrimaryButton";
 import ControlBar from "@/src/components/workspace/ControlBar";
