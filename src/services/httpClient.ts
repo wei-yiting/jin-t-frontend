@@ -74,3 +74,4 @@ class HttpClient {
 }
 
 export const httpClient = new HttpClient(BASE_URL || "");
+export type HttpClientType = HttpClient;

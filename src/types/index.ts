@@ -49,3 +49,17 @@ export interface ValidateOpenaiApiKeyResponse {
   is_api_key_valid: boolean;
   has_unexpectied_validation_error: boolean;
 }
+
+export type TaskStatus = "queued" | "processing" | "completed" | "failed";
+export type TaskProcessingProgressCode =
+  | "transcribing"
+  | "punc_fixing"
+  | "refining";
+
+export interface TaskProgressResponse {
+  status: TaskStatus;
+  progress_code: TaskProcessingProgressCode | null;
+  message: string;
+  transcript: string | null;
+  error_detail: string | null;
+}

@@ -14,6 +14,6 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const API_ENDPOINTS = {
-  TRANSCRIBE: "/transcribe",
+  TRANSCRIBE_TASK: "/transcribe-tasks",
   VALIDATE_OPENAI_API_KEY: "/validate-openai-api-key",
 } as const;
