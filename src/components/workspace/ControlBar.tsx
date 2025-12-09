@@ -4,34 +4,31 @@ import { DEFAULT_MODE } from "@/src/constants";
 import { AppStatus, TranscribeMode } from "@/src/types";
 import { useMediaRecorder, useAudioBlob } from "@/src/hooks";
 import { userService } from "@/src/services/userService";
+import { useTranscribeContext } from "@/src/contexts";
 import TranscribeModeSelector from "../transcribe/TranscribeModeSelector";
 import RecordingControls from "../recording/RecordingControls";
 import CopyTranscriptButton from "../buttons/CopyTranscriptButton";
 import ConfirmModal from "../modal/ConfirmModal";
+import TranscribeProgressLoader from "../transcribe/TranscribeProgressLoader";
 
 interface ControlBarProps {
   disaplyRecordingError: (error: string) => void;
   clearRecordingError: () => void;
   displayCompleteSettingsReminder: () => void;
-  transcriptText: string | null;
-  transcribe: (
-    audioFile: Blob,
-    mode: TranscribeMode,
-    duration: number | null
-  ) => Promise<void>;
-  setTranscribeError: (error: string | null) => void;
-  clearTranscript: () => void;
 }
 
 export default function ControlBar({
   disaplyRecordingError,
   clearRecordingError,
   displayCompleteSettingsReminder,
-  transcriptText,
-  transcribe,
-  setTranscribeError,
-  clearTranscript,
 }: ControlBarProps) {
+  const {
+    isTranscribing,
+    transcriptText,
+    transcribe,
+    setTranscribeError,
+    clearTranscript,
+  } = useTranscribeContext();
   const [controlBarStatus, setControlBarStatus] = useState<AppStatus>("idle");
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [transcribeMode, setTranscribeMode] =
@@ -207,29 +204,35 @@ export default function ControlBar({
           />
         </div>
         <div className="bg-slate-900/40 border border-slate-800/50 sm:border-slate-700/50 rounded-xl px-3 sm:px-4 py-2 sm:py-4 sm:min-h-[100px] flex items-center gap-3 h-auto">
-          <div className="flex-1 min-w-0">
-            <RecordingControls
-              appStatus={controlBarStatus}
-              duration={duration}
-              onStartRecording={handleStartRecording}
-              onPauseRecording={handlePauseRecording}
-              onResumeRecording={handleResumeRecording}
-              onCompleteRecording={handleCompleteRecording}
-              onDiscardRecording={handleDiscardRecording}
-              onUploadAudio={handleUploadAudioWrapper}
-              onStartTranscribe={handleUploadedAudioTranscribe}
-              onDiscardAudio={handleUploadedAudioDiscard}
-              onStartNextRecording={handleStartNextRecording}
-              onResetButtonClick={() => setIsConfirmResetOpen(true)}
-              onRetryTranscribe={handleRetryTranscribe}
-              onReRecord={handleReRecord}
-              mediaStream={mediaStreamRef?.current ?? null}
-              audioBlob={audioBlob}
-              getPreviewBlob={getPreviewBlob}
-            />
-          </div>
-          {controlBarStatus === "transcribed" && (
-            <CopyTranscriptButton transcriptText={transcriptText ?? ""} />
+          {isTranscribing ? (
+            <TranscribeProgressLoader />
+          ) : (
+            <>
+              <div className="flex-1 min-w-0">
+                <RecordingControls
+                  appStatus={controlBarStatus}
+                  duration={duration}
+                  onStartRecording={handleStartRecording}
+                  onPauseRecording={handlePauseRecording}
+                  onResumeRecording={handleResumeRecording}
+                  onCompleteRecording={handleCompleteRecording}
+                  onDiscardRecording={handleDiscardRecording}
+                  onUploadAudio={handleUploadAudioWrapper}
+                  onStartTranscribe={handleUploadedAudioTranscribe}
+                  onDiscardAudio={handleUploadedAudioDiscard}
+                  onStartNextRecording={handleStartNextRecording}
+                  onResetButtonClick={() => setIsConfirmResetOpen(true)}
+                  onRetryTranscribe={handleRetryTranscribe}
+                  onReRecord={handleReRecord}
+                  mediaStream={mediaStreamRef?.current ?? null}
+                  audioBlob={audioBlob}
+                  getPreviewBlob={getPreviewBlob}
+                />
+              </div>
+              {controlBarStatus === "transcribed" && (
+                <CopyTranscriptButton transcriptText={transcriptText ?? ""} />
+              )}
+            </>
           )}
         </div>
       </div>

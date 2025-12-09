@@ -1,4 +1,14 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+"use client";
+
+import {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 import { transcribeService, userService } from "@/src/services";
 import {
   TranscribeMode,
@@ -24,11 +34,31 @@ const getAdaptivePollingInterval = (attempts: number) => {
   return rule.interval;
 };
 
-export const useTranscribe = () => {
+interface TranscribeContextValue {
+  isTranscribing: boolean;
+  transcribeTaskStatus: TaskStatus;
+  transcribeProgressCode: TaskProgressCode | null;
+  transcribeProgressMessage: string;
+  transcriptText: string | null;
+  transcribeError: string | null;
+  transcribe: (
+    audioFile: Blob,
+    mode: TranscribeMode,
+    duration: number | null
+  ) => Promise<void>;
+  clearTranscript: () => void;
+  setTranscriptText: (value: string) => void;
+  setTranscribeError: (error: string | null) => void;
+}
+
+const TranscribeContext = createContext<TranscribeContextValue | null>(null);
+
+export function TranscribeProvider({ children }: { children: ReactNode }) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progressCode, setProgressCode] = useState<TaskProgressCode | null>(
     null
   );
+  const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
   const [progressMessage, setProgressMessage] = useState<string>("");
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
@@ -90,48 +120,51 @@ export const useTranscribe = () => {
       const poll = async () => {
         try {
           const {
-            status,
+            status: receivedTaskStatus,
             progress_code: receivedProgressCode,
             message: receivedMessage,
             error_detail,
             transcript: receivedTranscript,
           } = await transcribeService.getTranscribeProgress(taskId);
 
-          if (status === TaskStatus.COMPLETED) {
+          if (receivedTaskStatus === TaskStatus.COMPLETED) {
+            setTaskStatus(receivedTaskStatus);
+            setProgressCode(null);
+            setProgressMessage("");
+            setIsTranscribing(false);
             setTranscriptText((prev) =>
               prev ? prev + "\n" + receivedTranscript : receivedTranscript
             );
             return;
           }
 
-          if (status === TaskStatus.FAILED) {
+          if (receivedTaskStatus === TaskStatus.FAILED) {
+            setTaskStatus(receivedTaskStatus);
+            setProgressCode(null);
+            setProgressMessage("");
+            setIsTranscribing(false);
             setTranscribeError(error_detail);
             return;
           }
 
           //Transcribe status is either queued or processing, setup another request to poll again
+
           pollAttemptsRef.current++;
           const interval = getAdaptivePollingInterval(pollAttemptsRef.current);
           pollTimeoutRef.current = setTimeout(poll, interval);
 
-          setProgressMessage((prev) => receivedMessage || prev);
-          setProgressCode((prev) => receivedProgressCode || prev);
-
-          console.log(
-            `Already ${pollAttemptsRef.current} attempts, polling transcribe progress again in ${interval}ms...`
-          );
+          setTaskStatus(receivedTaskStatus);
+          setProgressMessage(receivedMessage);
+          setProgressCode(receivedProgressCode);
         } catch (err: unknown) {
           retryAttemptsRef.current++;
 
           if (retryAttemptsRef.current > MAX_RETRY_ATTEMPTS) {
+            setIsTranscribing(false);
             throw err;
           }
 
           pollTimeoutRef.current = setTimeout(poll, RETRY_INTERVAL);
-
-          console.log(
-            `Already ${retryAttemptsRef.current} attempts, retrying transcribe in ${RETRY_INTERVAL}ms...`
-          );
         }
       };
 
@@ -183,8 +216,6 @@ export const useTranscribe = () => {
           (err as { message?: string })?.message ||
           "Failed to poll transcribe progress";
         setTranscribeError(errorMessage);
-      } finally {
-        setIsTranscribing(false);
       }
     },
     [adaptivePollingTranscribeResult]
@@ -200,8 +231,9 @@ export const useTranscribe = () => {
     setTranscribeError(null);
   }, []);
 
-  return {
+  const value: TranscribeContextValue = {
     isTranscribing,
+    transcribeTaskStatus: taskStatus,
     transcribeProgressCode: progressCode,
     transcribeProgressMessage: progressMessage,
     transcriptText,
@@ -211,4 +243,20 @@ export const useTranscribe = () => {
     setTranscriptText: setManualTranscript,
     setTranscribeError,
   };
-};
+
+  return (
+    <TranscribeContext.Provider value={value}>
+      {children}
+    </TranscribeContext.Provider>
+  );
+}
+
+export function useTranscribeContext() {
+  const context = useContext(TranscribeContext);
+  if (!context) {
+    throw new Error(
+      "useTranscribeContext must be used within a TranscribeProvider"
+    );
+  }
+  return context;
+}

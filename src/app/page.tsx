@@ -7,22 +7,23 @@ import SettingsModal from "@/src/components/modal/SettingsModal";
 import PrimaryButton from "@/src/components/buttons/PrimaryButton";
 import ControlBar from "@/src/components/workspace/ControlBar";
 import { userService } from "@/src/services/userService";
-import { useTranscribe } from "../hooks";
+import { TranscribeProvider, useTranscribeContext } from "@/src/contexts";
 
 export default function Home() {
+  return (
+    <TranscribeProvider>
+      <HomeContent />
+    </TranscribeProvider>
+  );
+}
+
+function HomeContent() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [completeSettingsRequired, setIsCompleteSettingsRequired] =
     useState(false);
   const [isRecorderUnsupported, setIsRecorderUnsupported] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
-  const {
-    transcriptText,
-    setTranscriptText,
-    transcribeError,
-    transcribe,
-    setTranscribeError,
-    clearTranscript,
-  } = useTranscribe();
+  const { transcribeError } = useTranscribeContext();
 
   useEffect(function ensureDeviceIdExists() {
     (async () => {
@@ -102,10 +103,7 @@ export default function Home() {
             </div>
           )}
 
-          <TranscriptBlock
-            text={transcriptText ?? ""}
-            onChange={setTranscriptText}
-          />
+          <TranscriptBlock />
         </div>
       </section>
 
@@ -116,10 +114,6 @@ export default function Home() {
           displayCompleteSettingsReminder={() =>
             setIsCompleteSettingsRequired(true)
           }
-          transcriptText={transcriptText}
-          transcribe={transcribe}
-          setTranscribeError={setTranscribeError}
-          clearTranscript={clearTranscript}
         />
       </section>
 
