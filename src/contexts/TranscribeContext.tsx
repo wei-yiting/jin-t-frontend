@@ -116,6 +116,7 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
   const adaptivePollingTranscribeResult = useCallback(
     async (taskId: string) => {
       pollAttemptsRef.current = 0;
+      retryAttemptsRef.current = 0;
 
       const poll = async () => {
         try {
@@ -150,7 +151,17 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
           //Transcribe status is either queued or processing, setup another request to poll again
 
           pollAttemptsRef.current++;
-          const interval = getAdaptivePollingInterval(pollAttemptsRef.current);
+
+          let interval: number;
+          try {
+            interval = getAdaptivePollingInterval(pollAttemptsRef.current);
+          } catch (err: unknown) {
+            // Timeout error, stop polling immediately
+            setIsTranscribing(false);
+            setTranscribeError((err as Error).message);
+            return;
+          }
+
           pollTimeoutRef.current = setTimeout(poll, interval);
 
           setTaskStatus(receivedTaskStatus);
@@ -161,7 +172,10 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
 
           if (retryAttemptsRef.current > MAX_RETRY_ATTEMPTS) {
             setIsTranscribing(false);
-            throw err;
+            const errorMessage =
+              (err as { message?: string })?.message || "轉錄失敗，請稍後再試";
+            setTranscribeError(errorMessage);
+            return;
           }
 
           pollTimeoutRef.current = setTimeout(poll, RETRY_INTERVAL);
