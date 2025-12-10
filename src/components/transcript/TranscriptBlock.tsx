@@ -1,22 +1,17 @@
 import { useEffect, useRef } from "react";
 import { useClipboard } from "@/src/hooks/useClipboard";
 import { Copy, Check } from "lucide-react";
+import { useTranscribeContext } from "@/src/contexts";
 
 const TEXT_AREA_THRESHOLD = 5;
 
-interface TranscriptBlockProps {
-  text: string;
-  onChange?: (value: string) => void;
-}
-
-export default function TranscriptBlock({
-  text,
-  onChange,
-}: TranscriptBlockProps) {
-  const hasText = Boolean(text);
+export default function TranscriptBlock() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { showIsCopied, copyToClipboard } = useClipboard();
+  const { transcriptText: text, setTranscriptText: setText } =
+    useTranscribeContext();
 
+  const hasText = Boolean(text);
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -40,8 +35,8 @@ export default function TranscriptBlock({
       <div className="relative bg-slate-800/50 rounded-xl p-4">
         <textarea
           ref={textareaRef}
-          value={text}
-          onChange={(event) => onChange?.(event.target.value)}
+          value={text ?? ""}
+          onChange={(event) => setText(event.target.value)}
           className="w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none resize-none placeholder-slate-500 min-h-[120px]"
           placeholder="轉錄結果將顯示在此處..."
         />

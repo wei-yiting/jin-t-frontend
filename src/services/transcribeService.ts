@@ -1,17 +1,23 @@
-import { httpClient } from "./httpClient";
+import { httpClient, HttpClientType } from "./httpClient";
 import { API_ENDPOINTS } from "@/src/constants";
 import {
   TranscribeParams,
-  TranscribeResponse,
   UserSettings,
+  TranscribeProgressResponse,
+  BeginTranscribeResponse,
 } from "@/src/types";
 import { getFileExtensionFromMimeType } from "@/src/lib/audio-helpers";
 
-export const transcribeService = {
-  async transcribe(
+class TranscribeService {
+  private httpClient: HttpClientType;
+  constructor(httpClient: HttpClientType) {
+    this.httpClient = httpClient;
+  }
+
+  async beginTranscribe(
     transcribeParams: TranscribeParams,
     userSettings: UserSettings
-  ): Promise<TranscribeResponse> {
+  ): Promise<BeginTranscribeResponse> {
     const formData = new FormData();
     const extension = getFileExtensionFromMimeType(
       transcribeParams.audioFile.type
@@ -19,8 +25,8 @@ export const transcribeService = {
     const filename = `recording.${extension}`;
     formData.append("audio_file", transcribeParams.audioFile, filename);
 
-    return httpClient.post<TranscribeResponse>(
-      API_ENDPOINTS.TRANSCRIBE,
+    return this.httpClient.post<BeginTranscribeResponse>(
+      API_ENDPOINTS.TRANSCRIBE_TASK,
       formData,
       {
         params: {
@@ -38,5 +44,15 @@ export const transcribeService = {
         },
       }
     );
-  },
-};
+  }
+
+  async getTranscribeProgress(
+    taskId: string
+  ): Promise<TranscribeProgressResponse> {
+    return this.httpClient.get<TranscribeProgressResponse>(
+      `${API_ENDPOINTS.TRANSCRIBE_TASK}/${taskId}`
+    );
+  }
+}
+
+export const transcribeService = new TranscribeService(httpClient);

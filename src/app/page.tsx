@@ -1,48 +1,29 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Header from "@/src/components/layout/Header";
-import RecordingControls from "@/src/components/recording/RecordingControls";
-import TranscriptBlock from "@/src/components/transcription/TranscriptBlock";
-import TranscribeModeSelector from "@/src/components/transcription/TranscribeModeSelector";
+import TranscriptBlock from "@/src/components/transcript/TranscriptBlock";
 import SettingsModal from "@/src/components/modal/SettingsModal";
 import PrimaryButton from "@/src/components/buttons/PrimaryButton";
-import { ConfirmModal } from "@/src/components/modal/ConfirmModal";
-import CopyTranscriptButton from "@/src/components/buttons/CopyTranscriptButton";
-import { useMediaRecorder } from "@/src/hooks/useMediaRecorder";
-import { useAudioBlob } from "@/src/hooks/useAudioBlob";
-import { useTranscribe } from "@/src/hooks/useTranscribe";
+import ControlBar from "@/src/components/workspace/ControlBar";
 import { userService } from "@/src/services/userService";
-import { DEFAULT_MODE } from "@/src/constants";
-import { TranscribeMode, AppStatus } from "@/src/types";
+import { TranscribeProvider, useTranscribeContext } from "@/src/contexts";
 
 export default function Home() {
+  return (
+    <TranscribeProvider>
+      <HomeContent />
+    </TranscribeProvider>
+  );
+}
+
+function HomeContent() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [completeSettingsRequired, setIsCompleteSettingsRequired] =
     useState(false);
   const [isRecorderUnsupported, setIsRecorderUnsupported] = useState(false);
-  const [transcribeMode, setTranscribeMode] =
-    useState<TranscribeMode>(DEFAULT_MODE);
-  const [appStatus, setAppStatus] = useState<AppStatus>("idle");
   const [recordingError, setRecordingError] = useState<string | null>(null);
-
-  const {
-    audioBlob,
-    setAudioBlob,
-    retryBlob,
-    setRetryBlob,
-    handleUploadAudio,
-    clearBlob,
-  } = useAudioBlob();
-
-  const {
-    transcriptText,
-    error: transcribeError,
-    transcribe,
-    setTranscriptText,
-    clearTranscript,
-  } = useTranscribe();
+  const { transcribeError } = useTranscribeContext();
 
   useEffect(function ensureDeviceIdExists() {
     (async () => {
@@ -83,157 +64,6 @@ export default function Home() {
     })();
   }, []);
 
-  // Transcribe the given blob (shared logic for recording and upload)
-  const transcribeAudioBlob = useCallback(
-    async (audioBlob: Blob, audioDuration?: number) => {
-      try {
-        setAppStatus("transcribing");
-        await transcribe(
-          audioBlob,
-          transcribeMode,
-          audioDuration ? audioDuration : null
-        );
-        setAppStatus("transcribed");
-        clearBlob();
-      } catch (error) {
-        setRetryBlob(audioBlob);
-        setAppStatus("transcribe-error");
-      }
-    },
-    [transcribeMode, transcribe, setRetryBlob, clearBlob, userService]
-  );
-
-  // Called by useMediaRecorder when recording is complete
-  const handleRecordingCompletedAndTranscribe = useCallback(
-    async (blob: Blob, duration: number) => {
-      setAudioBlob(blob);
-
-      // If no API key, just save the blob and wait
-      if (!userService.checkHasPersonalApiKey()) {
-        setAppStatus("audio-ready");
-        return;
-      }
-
-      // Otherwise, immediately start transcribing
-      await transcribeAudioBlob(blob, duration);
-    },
-    [setAudioBlob, transcribeAudioBlob, userService]
-  );
-
-  // Handle recording errors from useMediaRecorder
-  const handleRecordingError = useCallback((error: string) => {
-    setRecordingError(error);
-    setAppStatus("idle");
-  }, []);
-
-  const {
-    startMediaRecorder,
-    pauseMediaRecorder,
-    resumeMediaRecorder,
-    stopMediaRecorder,
-    discardMediaRecorder,
-    duration,
-    mediaStreamRef,
-    getPreviewBlob,
-  } = useMediaRecorder({
-    onRecordingComplete: handleRecordingCompletedAndTranscribe,
-    onRecordingError: handleRecordingError,
-  });
-
-  const handleCompleteRecording = useCallback(() => {
-    // Stop recording (will trigger onRecordingComplete callback)
-    if (appStatus === "recording" || appStatus === "paused") {
-      stopMediaRecorder();
-    }
-  }, [appStatus, stopMediaRecorder]);
-
-  const handleDiscardRecording = useCallback(() => {
-    discardMediaRecorder();
-    clearBlob();
-    setRecordingError(null);
-    setAppStatus("idle");
-  }, [discardMediaRecorder, clearBlob]);
-
-  const handleStartRecording = useCallback(async () => {
-    setRecordingError(null); // Clear previous errors
-    const { success } = await startMediaRecorder();
-    if (success) {
-      setAppStatus("recording");
-    }
-  }, [startMediaRecorder]);
-
-  const handlePauseRecording = useCallback(() => {
-    pauseMediaRecorder();
-    setAppStatus("paused");
-  }, [pauseMediaRecorder]);
-
-  const handleResumeRecording = useCallback(() => {
-    resumeMediaRecorder();
-    setAppStatus("recording");
-  }, [resumeMediaRecorder]);
-
-  // Handle file upload - show preview first, let user decide to transcribe
-  const handleUploadAudioWrapper = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const { success } = handleUploadAudio(event);
-      if (!success) return;
-
-      setAppStatus("audio-ready");
-    },
-    [handleUploadAudio, setAppStatus]
-  );
-
-  const handleStartNextRecording = useCallback(async () => {
-    setRecordingError(null); // Clear previous errors
-    const { success } = await startMediaRecorder();
-    if (success) {
-      setAppStatus("recording");
-    }
-  }, [startMediaRecorder]);
-
-  const handleResetAll = useCallback(() => {
-    setIsConfirmResetOpen(true);
-  }, []);
-
-  const handleConfirmReset = useCallback(() => {
-    clearBlob();
-    clearTranscript();
-    setAppStatus("idle");
-    setIsConfirmResetOpen(false);
-  }, [clearBlob, clearTranscript]);
-
-  // Start transcript for uploaded audio
-  const handleUploadedAudioTranscribe = useCallback(async () => {
-    if (!audioBlob) return;
-    if (!userService.checkHasPersonalApiKey()) {
-      setIsSettingsOpen(true);
-      return;
-    }
-    await transcribeAudioBlob(audioBlob);
-  }, [audioBlob, transcribeAudioBlob, userService]);
-
-  // Discard uploaded audio
-  const handleUploadedAudioDiscard = useCallback(() => {
-    clearBlob();
-    setAppStatus("idle");
-  }, [clearBlob]);
-
-  // Retry transcribe after error
-  const handleRetryTranscribe = useCallback(async () => {
-    if (!retryBlob) return;
-    if (!userService.checkHasPersonalApiKey()) {
-      setIsSettingsOpen(true);
-      return;
-    }
-    await transcribeAudioBlob(retryBlob);
-  }, [retryBlob, transcribeAudioBlob, userService]);
-
-  const handleReRecord = useCallback(() => {
-    clearBlob();
-    clearTranscript();
-    setAppStatus("idle");
-  }, [clearBlob, clearTranscript]);
-
   return (
     <div className="h-dvh flex flex-col bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <section className="shrink-0 border-b border-slate-800 px-2 sm:px-6 md:px-8 lg:px-12 py-4">
@@ -243,10 +73,10 @@ export default function Home() {
       <section className="flex-1 overflow-y-auto px-2 sm:px-6 md:px-8 lg:px-12 py-6 min-h-0 custom-scrollbar">
         <div className="max-w-5xl mx-auto flex flex-col gap-6">
           {isRecorderUnsupported && (
-            <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
+            <p className="bg-red-900/20 border border-red-700/30 rounded-xl p-3 text-base text-red-200">
               瀏覽器不支援或未授權使用麥克風，請重新整理並授權同意只用麥克風，如無法授權請改用最新版本的
               Chrome。
-            </div>
+            </p>
           )}
 
           {!isRecorderUnsupported && completeSettingsRequired && (
@@ -273,65 +103,24 @@ export default function Home() {
             </div>
           )}
 
-          <TranscriptBlock
-            text={transcriptText ?? ""}
-            onChange={setTranscriptText}
-          />
+          <TranscriptBlock />
         </div>
       </section>
 
-      {/* Recording Controls - Fixed at bottom */}
       <section className="shrink-0 px-2 sm:px-6 md:px-8 lg:px-12 py-4">
-        <div className="max-w-5xl mx-auto flex flex-col gap-0.5">
-          <div className="flex justify-end">
-            <TranscribeModeSelector
-              value={transcribeMode}
-              onModeChange={setTranscribeMode}
-              disabled={
-                appStatus === "recording" || appStatus === "transcribing"
-              }
-            />
-          </div>
-          <div className="bg-slate-900/40 border border-slate-800/50 sm:border-slate-700/50 rounded-xl px-3 sm:px-4 py-2 sm:py-4 sm:min-h-[100px] flex items-center gap-3 h-auto">
-            <div className="flex-1 min-w-0">
-              <RecordingControls
-                appStatus={appStatus}
-                duration={duration}
-                onStartRecording={handleStartRecording}
-                onPauseRecording={handlePauseRecording}
-                onResumeRecording={handleResumeRecording}
-                onCompleteRecording={handleCompleteRecording}
-                onDiscardRecording={handleDiscardRecording}
-                onUploadAudio={handleUploadAudioWrapper}
-                onStartTranscribe={handleUploadedAudioTranscribe}
-                onDiscardAudio={handleUploadedAudioDiscard}
-                onStartNextRecording={handleStartNextRecording}
-                onResetAll={handleResetAll}
-                onRetryTranscribe={handleRetryTranscribe}
-                onReRecord={handleReRecord}
-                mediaStream={mediaStreamRef?.current ?? null}
-                audioBlob={audioBlob}
-                getPreviewBlob={getPreviewBlob}
-              />
-            </div>
-            {appStatus === "transcribed" && (
-              <CopyTranscriptButton transcriptText={transcriptText ?? ""} />
-            )}
-          </div>
-        </div>
+        <ControlBar
+          disaplyRecordingError={setRecordingError}
+          clearRecordingError={() => setRecordingError(null)}
+          displayCompleteSettingsReminder={() =>
+            setIsCompleteSettingsRequired(true)
+          }
+        />
       </section>
 
       <SettingsModal
         isOpen={isSettingsOpen}
         onModalClose={() => setIsSettingsOpen(false)}
         onSettingsSaved={() => setIsCompleteSettingsRequired(false)}
-      />
-
-      <ConfirmModal
-        isOpen={isConfirmResetOpen}
-        message="確定要清除所有內容並重新開始嗎？"
-        onConfirm={handleConfirmReset}
-        onCancel={() => setIsConfirmResetOpen(false)}
       />
     </div>
   );
