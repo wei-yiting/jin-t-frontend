@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import PrimaryButton from "../buttons/PrimaryButton";
-import { X, Check, Info, ExternalLink } from "lucide-react";
+import { X, Check, Info, ExternalLink, Pencil } from "lucide-react";
 import { userService } from "@/src/services/userService";
 import { BillingOption } from "@/src/types";
 
@@ -17,9 +17,20 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const [billingOption, setBillingOption] = useState<BillingOption>("free");
   const [consentDataCollection, setConsentDataCollection] = useState(true);
-  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [isEditingApiKey, setIsEditingApiKey] = useState(false);
+  const [originalMaskedApiKey, setOriginalMaskedApiKey] = useState<
+    string | null
+  >(null);
+  const [newApiKeyInput, setNewApiKeyInput] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isVerifyingApiKey, setIsVerifyingApiKey] = useState(false);
+
+  const getHasCompleteApiKey = async () => {
+    const userSettings = await userService.getUserSettings();
+    const maskedApiKey = userSettings.maskedCustomOpenaiApiKey || null;
+    const encryptedApiKey = userSettings.encryptedCustomOpenaiApiKey || null;
+    return !!maskedApiKey && !!encryptedApiKey;
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -35,23 +46,31 @@ export default function SettingsModal({
         setBillingOption("free");
       }
 
-      if (
-        userSettings.encryptedCustomOpenaiApiKey &&
-        userSettings.maskedCustomOpenaiApiKey
-      ) {
-        setApiKeyInput(userSettings.maskedCustomOpenaiApiKey);
-      }
+      const maskedApiKey = userSettings.maskedCustomOpenaiApiKey || null;
+      const hasCompleteApiKey = await getHasCompleteApiKey();
+      setOriginalMaskedApiKey(hasCompleteApiKey ? maskedApiKey : null);
+      setIsEditingApiKey(hasCompleteApiKey ? false : true);
 
+      setNewApiKeyInput("");
       setConsentDataCollection(userSettings.allowDataCollection);
     })();
   }, [isOpen]);
 
-  const handleBillingOptionChange = (option: BillingOption) => {
+  const handleBillingOptionChange = async (option: BillingOption) => {
     setBillingOption(option);
 
     // If switching to free tier, consent must be true
     if (option === "free") {
       setConsentDataCollection(true);
+      setIsEditingApiKey(false);
+    }
+
+    // If switching to byok and no hasCompleteApiKey, set isEditingApiKey to true
+    const hasCompleteApiKey = await getHasCompleteApiKey();
+    if (option === "byok" && !hasCompleteApiKey) {
+      setIsEditingApiKey(true);
+    } else if (option === "byok" && hasCompleteApiKey) {
+      setIsEditingApiKey(false);
     }
 
     // Clear error when switching options
@@ -72,11 +91,23 @@ export default function SettingsModal({
   };
 
   const handleApiKeyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setApiKeyInput(event.target.value);
+    setNewApiKeyInput(event.target.value);
     // Clear error message when user starts typing
     if (errorMessage) {
       setErrorMessage(null);
     }
+  };
+
+  const handleReplaceApiKeyButtonClick = () => {
+    setIsEditingApiKey(true);
+    setNewApiKeyInput("");
+    setErrorMessage(null);
+  };
+
+  const handleCancelEditApiKey = () => {
+    setIsEditingApiKey(false);
+    setNewApiKeyInput("");
+    setErrorMessage(null);
   };
 
   const handleSettingsSave = async () => {
@@ -93,8 +124,21 @@ export default function SettingsModal({
         return;
       }
 
-      // Own API key option - must provide valid API key
-      const trimmedApiKey = apiKeyInput.trim();
+      // Own API key option
+      // If not editing or no new API key input, skip validation and just update settings
+      if (!isEditingApiKey || !newApiKeyInput.trim()) {
+        await Promise.all([
+          userService.saveConsentDataCollection(consentDataCollection),
+          userService.saveIsUsingPersonalApiKey(true),
+        ]);
+        setErrorMessage(null);
+        onSettingsSaved();
+        onModalClose();
+        return;
+      }
+
+      // If editing and has new API key input, validate it
+      const trimmedApiKey = newApiKeyInput.trim();
       if (!trimmedApiKey) {
         setErrorMessage("請提供您的 OpenAI API Key");
         return;
@@ -128,7 +172,8 @@ export default function SettingsModal({
   };
 
   const handleModalClose = () => {
-    setApiKeyInput("");
+    setIsEditingApiKey(false);
+    setNewApiKeyInput("");
     setErrorMessage(null);
     setIsVerifyingApiKey(false);
     onModalClose();
@@ -143,7 +188,7 @@ export default function SettingsModal({
       return true;
     }
 
-    if (billingOption === "byok" && !apiKeyInput.trim()) {
+    if (billingOption === "byok" && isEditingApiKey && !newApiKeyInput.trim()) {
       return true;
     }
 
@@ -268,7 +313,7 @@ export default function SettingsModal({
         {/* Section 3: Own API Key Details */}
         {billingOption === "byok" && (
           <>
-            {/* API Key Input */}
+            {/* API Key Display/Input */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
@@ -284,13 +329,42 @@ export default function SettingsModal({
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
-              <input
-                type="text"
-                value={apiKeyInput}
-                onChange={handleApiKeyChange}
-                placeholder="sk-..."
-                className="w-full px-3 py-2.5 text-sm rounded-lg bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
+
+              {/* Show masked API key + Replace button */}
+              {!isEditingApiKey && originalMaskedApiKey && (
+                <div className="flex items-end gap-3">
+                  <p className="flex-1 text-sm text-slate-100 border-b border-slate-600 pl-2 pb-1.5">
+                    {originalMaskedApiKey}
+                  </p>
+                  <PrimaryButton
+                    onClick={handleReplaceApiKeyButtonClick}
+                    label="更換"
+                    icon={<Pencil className="w-4 h-4" />}
+                    variant="ghost"
+                  />
+                </div>
+              )}
+
+              {/* Show input field + Cancel button (only if has originalMaskedApiKey) */}
+              {isEditingApiKey && (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={newApiKeyInput}
+                    onChange={handleApiKeyChange}
+                    placeholder="sk-..."
+                    className="flex-1 px-3 py-2.5 text-sm rounded-lg bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  {originalMaskedApiKey && (
+                    <PrimaryButton
+                      onClick={handleCancelEditApiKey}
+                      label="取消"
+                      icon={<X className="w-4 h-4" />}
+                      variant="ghost"
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Data Collection - Optional (No title) */}

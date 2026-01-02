@@ -145,7 +145,7 @@ class UserService {
   async saveMaskedCustomOpenaiApiKey(
     customOpenaiApiKey: string
   ): Promise<void> {
-    const maskedApiKey = `sk-...${customOpenaiApiKey.slice(-4)}`;
+    const maskedApiKey = `sk-${".".repeat(30)}${customOpenaiApiKey.slice(-4)}`;
     try {
       await this.storage.set(
         USER_INFO_KEYS.MASKED_OPENAI_API_KEY,
