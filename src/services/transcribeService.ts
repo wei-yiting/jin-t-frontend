@@ -6,7 +6,7 @@ import {
   TranscribeProgressResponse,
   BeginTranscribeResponse,
 } from "@/src/types";
-import { getFileExtensionFromMimeType } from "@/src/lib/audio-helpers";
+import { getFileExtensionFromMimeType } from "@/src/lib/audioHelpers";
 
 class TranscribeService {
   private httpClient: HttpClientType;
@@ -37,8 +37,9 @@ class TranscribeService {
           "X-Consent-Data-Collection":
             userSettings.allowDataCollection.toString(),
           "X-Custom-Openai-Api-Key":
-            userSettings.useOwnApiKey && userSettings.customOpenaiApiKey
-              ? userSettings.customOpenaiApiKey
+            userSettings.useOwnApiKey &&
+            userSettings.encryptedCustomOpenaiApiKey
+              ? userSettings.encryptedCustomOpenaiApiKey
               : "",
           "X-Audio-Duration": transcribeParams.audioDuration?.toString() || "",
         },

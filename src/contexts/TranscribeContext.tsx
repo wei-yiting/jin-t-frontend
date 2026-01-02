@@ -211,8 +211,8 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
           deviceId: userSettings.deviceId,
           useOwnApiKey: userSettings.useOwnApiKey,
           allowDataCollection: userSettings.allowDataCollection,
-          customOpenaiApiKey: userSettings.useOwnApiKey
-            ? userSettings.customOpenaiApiKey
+          encryptedCustomOpenaiApiKey: userSettings.useOwnApiKey
+            ? userSettings.encryptedCustomOpenaiApiKey
             : null,
         };
         const beginTranscribeResponse = await transcribeService.beginTranscribe(

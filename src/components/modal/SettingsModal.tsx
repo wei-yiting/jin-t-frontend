@@ -35,8 +35,11 @@ export default function SettingsModal({
         setBillingOption("free");
       }
 
-      if (userSettings.customOpenaiApiKey) {
-        setApiKeyInput(userSettings.customOpenaiApiKey);
+      if (
+        userSettings.encryptedCustomOpenaiApiKey &&
+        userSettings.maskedCustomOpenaiApiKey
+      ) {
+        setApiKeyInput(userSettings.maskedCustomOpenaiApiKey);
       }
 
       setConsentDataCollection(userSettings.allowDataCollection);
@@ -101,9 +104,12 @@ export default function SettingsModal({
       const result = await userService.checkIsOpenaiApiKeyValid(trimmedApiKey);
 
       if (result.is_api_key_valid) {
-        await userService.encodeAndSaveOpenaiApiKey(trimmedApiKey);
-        await userService.saveConsentDataCollection(consentDataCollection);
-        await userService.saveIsUsingPersonalApiKey(true);
+        await Promise.all([
+          userService.encryptAndSaveOpenaiApiKey(trimmedApiKey),
+          userService.saveMaskedCustomOpenaiApiKey(trimmedApiKey),
+          userService.saveConsentDataCollection(consentDataCollection),
+          userService.saveIsUsingPersonalApiKey(true),
+        ]);
         setErrorMessage(null);
         onSettingsSaved();
         onModalClose();
@@ -279,7 +285,7 @@ export default function SettingsModal({
                 </a>
               </div>
               <input
-                type="password"
+                type="text"
                 value={apiKeyInput}
                 onChange={handleApiKeyChange}
                 placeholder="sk-..."
