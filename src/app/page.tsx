@@ -39,7 +39,7 @@ function HomeContent() {
 
   useEffect(function checkIsCompleteSettingsRequired() {
     (async () => {
-      const { useOwnApiKey, allowDataCollection, customOpenaiApiKey } =
+      const { useOwnApiKey, allowDataCollection, encryptedCustomOpenaiApiKey } =
         await userService.getUserSettings();
 
       if (!useOwnApiKey && !allowDataCollection) {
@@ -48,14 +48,12 @@ function HomeContent() {
       }
 
       if (useOwnApiKey) {
-        if (!customOpenaiApiKey) {
+        if (!encryptedCustomOpenaiApiKey) {
           setIsCompleteSettingsRequired(true);
           return;
         }
 
-        const isValidApiKey = await userService.checkIsOpenaiApiKeyValid(
-          customOpenaiApiKey
-        );
+        const isValidApiKey = await userService.validateSavedOpenaiApiKey();
         if (!isValidApiKey) {
           setIsCompleteSettingsRequired(true);
           return;

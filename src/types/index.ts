@@ -15,7 +15,8 @@ export interface UserSettings {
   deviceId: string;
   useOwnApiKey: boolean;
   allowDataCollection: boolean;
-  customOpenaiApiKey?: string;
+  encryptedCustomOpenaiApiKey?: string;
+  maskedCustomOpenaiApiKey?: string;
 }
 
 export interface TranscribeParams {
@@ -37,7 +38,8 @@ export interface ApiError {
 export const USER_INFO_KEYS = {
   DEVICE_ID: "jjt_device_id",
   USE_PERSONAL_API_KEY: "jjt_use_personal_api_key",
-  OPENAI_API_KEY: "jjt_openai_api_key",
+  ENCRYPTED_OPENAI_API_KEY: "jjt_encrypted_openai_api_key",
+  MASKED_OPENAI_API_KEY: "jjt_masked_openai_api_key",
   CONSENT_DATA_COLLECTION: "jjt_consent_data_collection",
 } as const;
 

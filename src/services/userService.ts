@@ -6,6 +6,7 @@ import {
   UserSettings,
 } from "@/src/types";
 import { API_ENDPOINTS } from "@/src/constants";
+import { encryptApiKey } from "@/src/lib/apiKeyEncryptor";
 
 class UserService {
   private storage: LocalStorageClient;
@@ -40,11 +41,17 @@ class UserService {
 
   async checkHasPersonalApiKey(): Promise<boolean> {
     try {
-      const hasPersonalApiKey = await this.storage.get(
-        USER_INFO_KEYS.OPENAI_API_KEY,
+      const hasEncryptedApiKey = await this.storage.get(
+        USER_INFO_KEYS.ENCRYPTED_OPENAI_API_KEY,
         null
       );
-      return !!hasPersonalApiKey;
+
+      const hasMaskedApiKey = await this.storage.get(
+        USER_INFO_KEYS.MASKED_OPENAI_API_KEY,
+        null
+      );
+
+      return !!hasEncryptedApiKey && !!hasMaskedApiKey;
     } catch (error) {
       console.error("Error getting personal API key from localStorage:", error);
       return false;
@@ -65,57 +72,108 @@ class UserService {
     try {
       const response = await httpClient.post<ValidateOpenaiApiKeyResponse>(
         API_ENDPOINTS.VALIDATE_OPENAI_API_KEY,
-        { openai_api_key: trimmedOpenaiApiKey }
+        { encrypted_openai_api_key: encryptApiKey(trimmedOpenaiApiKey) }
       );
 
       return response;
     } catch (error) {
       console.error("Error checking OpenAI API key:", error);
-      throw error;
+      return {
+        is_api_key_valid: false,
+        has_unexpectied_validation_error: true,
+      };
     }
   }
 
-  async getAndDecodeOpenaiApiKey(): Promise<string> {
-    let encodedOpenaiApiKey = "";
+  async validateSavedOpenaiApiKey(): Promise<boolean> {
+    const encryptedCustomOpenaiApiKey =
+      await this.getEncryptedCustomOpenaiApiKey();
+    const maskedCustomOpenaiApiKey = await this.getMaskedCustomOpenaiApiKey();
+
+    if (!maskedCustomOpenaiApiKey || !encryptedCustomOpenaiApiKey) {
+      return false;
+    }
+
     try {
-      encodedOpenaiApiKey = await this.storage.get(
-        USER_INFO_KEYS.OPENAI_API_KEY,
+      const response = await httpClient.post<ValidateOpenaiApiKeyResponse>(
+        API_ENDPOINTS.VALIDATE_OPENAI_API_KEY,
+        { encrypted_openai_api_key: encryptedCustomOpenaiApiKey }
+      );
+
+      return response.is_api_key_valid;
+    } catch (error) {
+      console.error("Error checking OpenAI API key:", error);
+      return false;
+    }
+  }
+
+  async getEncryptedCustomOpenaiApiKey(): Promise<string> {
+    try {
+      const encryptedCustomOpenaiApiKey = await this.storage.get(
+        USER_INFO_KEYS.ENCRYPTED_OPENAI_API_KEY,
         null
       );
 
-      if (encodedOpenaiApiKey === null) {
+      if (!encryptedCustomOpenaiApiKey) {
         return "";
       }
-    } catch (error) {
-      console.error("Error getting OpenAI API key from localStorage:", error);
-      return "";
-    }
 
-    try {
-      const decodedOpenaiApiKey = atob(encodedOpenaiApiKey);
-      return decodedOpenaiApiKey;
+      return encryptedCustomOpenaiApiKey;
     } catch (error) {
-      console.error("Error decoding OpenAI API key:", error);
+      console.error(
+        "Error getting encrypted custom OpenAI API key from localStorage:",
+        error
+      );
       return "";
     }
   }
 
-  async encodeAndSaveOpenaiApiKey(openaiApiKey: string): Promise<void> {
-    let encodedOpenaiApiKey = "";
-    try {
-      encodedOpenaiApiKey = btoa(openaiApiKey);
-    } catch (error) {
-      console.error("Error encoding OpenAI API key:", error);
-      return;
-    }
-
+  async encryptAndSaveOpenaiApiKey(customOpenaiApiKey: string): Promise<void> {
     try {
       await this.storage.set(
-        USER_INFO_KEYS.OPENAI_API_KEY,
-        encodedOpenaiApiKey
+        USER_INFO_KEYS.ENCRYPTED_OPENAI_API_KEY,
+        encryptApiKey(customOpenaiApiKey)
       );
     } catch (error) {
       console.error("Error saving OpenAI API key in localStorage:", error);
+    }
+  }
+
+  async getMaskedCustomOpenaiApiKey(): Promise<string> {
+    try {
+      const maskedCustomOpenaiApiKey = await this.storage.get(
+        USER_INFO_KEYS.MASKED_OPENAI_API_KEY,
+        null
+      );
+
+      if (!maskedCustomOpenaiApiKey) {
+        return "";
+      }
+
+      return maskedCustomOpenaiApiKey;
+    } catch (error) {
+      console.error(
+        "Error getting masked custom OpenAI API key from localStorage:",
+        error
+      );
+      return "";
+    }
+  }
+
+  async saveMaskedCustomOpenaiApiKey(
+    customOpenaiApiKey: string
+  ): Promise<void> {
+    const maskedApiKey = `sk-${".".repeat(30)}${customOpenaiApiKey.slice(-4)}`;
+    try {
+      await this.storage.set(
+        USER_INFO_KEYS.MASKED_OPENAI_API_KEY,
+        maskedApiKey
+      );
+    } catch (error) {
+      console.error(
+        "Error saving masked custom OpenAI API key in localStorage:",
+        error
+      );
     }
   }
 
@@ -224,7 +282,8 @@ class UserService {
       deviceId: await this.getOrCreateDeviceId(),
       useOwnApiKey: isUsingPersonalApiKey,
       allowDataCollection: await this.getOrSetDefaultConsentDataCollection(),
-      customOpenaiApiKey: await this.getAndDecodeOpenaiApiKey(),
+      encryptedCustomOpenaiApiKey: await this.getEncryptedCustomOpenaiApiKey(),
+      maskedCustomOpenaiApiKey: await this.getMaskedCustomOpenaiApiKey(),
     };
 
     return userSettings;
