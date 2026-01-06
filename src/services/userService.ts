@@ -78,7 +78,10 @@ class UserService {
       return response;
     } catch (error) {
       console.error("Error checking OpenAI API key:", error);
-      throw error;
+      return {
+        is_api_key_valid: false,
+        has_unexpectied_validation_error: true,
+      };
     }
   }
 
@@ -86,7 +89,22 @@ class UserService {
     const encryptedCustomOpenaiApiKey =
       await this.getEncryptedCustomOpenaiApiKey();
     const maskedCustomOpenaiApiKey = await this.getMaskedCustomOpenaiApiKey();
-    return !!encryptedCustomOpenaiApiKey && !!maskedCustomOpenaiApiKey;
+
+    if (!maskedCustomOpenaiApiKey || !encryptedCustomOpenaiApiKey) {
+      return false;
+    }
+
+    try {
+      const response = await httpClient.post<ValidateOpenaiApiKeyResponse>(
+        API_ENDPOINTS.VALIDATE_OPENAI_API_KEY,
+        { encrypted_openai_api_key: encryptedCustomOpenaiApiKey }
+      );
+
+      return response.is_api_key_valid;
+    } catch (error) {
+      console.error("Error checking OpenAI API key:", error);
+      return false;
+    }
   }
 
   async getEncryptedCustomOpenaiApiKey(): Promise<string> {
