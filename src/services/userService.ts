@@ -181,8 +181,8 @@ class UserService {
     }
   }
 
-  async getIsUsingPersonalApiKey(): Promise<boolean> {
-    let isUsingPersonalApiKey = null;
+  async getOrSetDefaultIsUsingPersonalApiKey(): Promise<boolean> {
+    let isUsingPersonalApiKey: boolean | null = null;
     try {
       isUsingPersonalApiKey = await this.storage.get(
         USER_INFO_KEYS.USE_PERSONAL_API_KEY,
@@ -197,10 +197,11 @@ class UserService {
     }
 
     if (isUsingPersonalApiKey === null) {
+      isUsingPersonalApiKey = DEFAULT_IS_USING_PERSONAL_API_KEY;
       try {
         await this.storage.set(
           USER_INFO_KEYS.USE_PERSONAL_API_KEY,
-          DEFAULT_IS_USING_PERSONAL_API_KEY
+          isUsingPersonalApiKey
         );
       } catch (error) {
         console.error(
@@ -210,7 +211,7 @@ class UserService {
       }
     }
 
-    return isUsingPersonalApiKey;
+    return isUsingPersonalApiKey ?? DEFAULT_IS_USING_PERSONAL_API_KEY;
   }
 
   async saveIsUsingPersonalApiKey(
@@ -230,7 +231,7 @@ class UserService {
   }
 
   async getOrSetDefaultConsentDataCollection(): Promise<boolean> {
-    let consentDataCollection = null;
+    let consentDataCollection: boolean | null = null;
     try {
       consentDataCollection = await this.storage.get(
         USER_INFO_KEYS.CONSENT_DATA_COLLECTION,
@@ -245,10 +246,11 @@ class UserService {
     }
 
     if (consentDataCollection === null) {
+      consentDataCollection = DEFAULT_CONSENT_DATA_COLLECTION;
       try {
         await this.storage.set(
           USER_INFO_KEYS.CONSENT_DATA_COLLECTION,
-          DEFAULT_CONSENT_DATA_COLLECTION
+          consentDataCollection
         );
       } catch (error) {
         console.error(
@@ -258,7 +260,7 @@ class UserService {
       }
     }
 
-    return consentDataCollection;
+    return consentDataCollection ?? DEFAULT_CONSENT_DATA_COLLECTION;
   }
 
   async saveConsentDataCollection(
@@ -278,11 +280,9 @@ class UserService {
   }
 
   async getUserSettings(): Promise<UserSettings> {
-    const isUsingPersonalApiKey = await this.getIsUsingPersonalApiKey();
-
     const userSettings: UserSettings = {
       deviceId: await this.getOrCreateDeviceId(),
-      useOwnApiKey: isUsingPersonalApiKey,
+      useOwnApiKey: await this.getOrSetDefaultIsUsingPersonalApiKey(),
       allowDataCollection: await this.getOrSetDefaultConsentDataCollection(),
       encryptedCustomOpenaiApiKey: await this.getEncryptedCustomOpenaiApiKey(),
       maskedCustomOpenaiApiKey: await this.getMaskedCustomOpenaiApiKey(),

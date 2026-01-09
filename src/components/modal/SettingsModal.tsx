@@ -52,7 +52,23 @@ export default function SettingsModal({
       setIsEditingApiKey(hasCompleteApiKey ? false : true);
 
       setNewApiKeyInput("");
-      setConsentDataCollection(userSettings.allowDataCollection);
+
+      // Free tier requires consent; migrate users who previously didn't consent.
+      if (!userSettings.useOwnApiKey) {
+        setConsentDataCollection(true);
+        if (!userSettings.allowDataCollection) {
+          try {
+            await userService.saveConsentDataCollection(true);
+          } catch (error) {
+            console.error(
+              "Error migrating consent data collection for free tier:",
+              error
+            );
+          }
+        }
+      } else {
+        setConsentDataCollection(userSettings.allowDataCollection);
+      }
     })();
   }, [isOpen]);
 
