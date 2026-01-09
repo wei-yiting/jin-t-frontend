@@ -5,7 +5,11 @@ import {
   ValidateOpenaiApiKeyResponse,
   UserSettings,
 } from "@/src/types";
-import { API_ENDPOINTS } from "@/src/constants";
+import {
+  API_ENDPOINTS,
+  DEFAULT_CONSENT_DATA_COLLECTION,
+  DEFAULT_IS_USING_PERSONAL_API_KEY,
+} from "@/src/constants";
 import { encryptApiKey } from "@/src/lib/apiKeyEncryptor";
 
 class UserService {
@@ -193,11 +197,10 @@ class UserService {
     }
 
     if (isUsingPersonalApiKey === null) {
-      isUsingPersonalApiKey = true; // Default to true so we can prompt user to set their own api key
       try {
         await this.storage.set(
           USER_INFO_KEYS.USE_PERSONAL_API_KEY,
-          isUsingPersonalApiKey
+          DEFAULT_IS_USING_PERSONAL_API_KEY
         );
       } catch (error) {
         console.error(
@@ -242,11 +245,10 @@ class UserService {
     }
 
     if (consentDataCollection === null) {
-      consentDataCollection = false; // Default to false to make sure user fully consent to data collection
       try {
         await this.storage.set(
           USER_INFO_KEYS.CONSENT_DATA_COLLECTION,
-          consentDataCollection
+          DEFAULT_CONSENT_DATA_COLLECTION
         );
       } catch (error) {
         console.error(

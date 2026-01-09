@@ -1,12 +1,15 @@
 import { TranscribeMode } from "@/src/types";
 
-export const DEFAULT_MODE: TranscribeMode = "fast";
+export const DEFAULT_MODE: TranscribeMode = "standard";
 
 export const TRANSCRIBE_MODES = [
   { value: "fast", label: "快速模式" },
   { value: "standard", label: "標準模式" },
   { value: "refined", label: "潤稿模式" },
 ] as const;
+
+export const DEFAULT_CONSENT_DATA_COLLECTION = true; // Default free tier and consent data collection
+export const DEFAULT_IS_USING_PERSONAL_API_KEY = false; // Default to false for free tier
 
 // TODO: Remove when supabae db store api key
 export const STORAGE_KEYS = {

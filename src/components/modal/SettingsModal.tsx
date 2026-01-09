@@ -275,10 +275,6 @@ export default function SettingsModal({
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                    <span>每小時最多轉錄總時長 10 分鐘</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
                     <span>每天最多轉錄總時長 30 分鐘</span>
                   </div>
                 </div>
