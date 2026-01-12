@@ -1,6 +1,12 @@
 {
   "permissions": {
     "allow": [],
-    "deny": ["Shell(git push)", "Shell(gh pr create)", "Write(**)"]
+    "deny": [
+      "Shell(git push*)",
+      "Shell(gh pr create*)",
+      "Shell(gh pr merge*)",
+      "Shell(gh pr close*)",
+      "Write(**)"
+    ]
   }
 }
