@@ -78,7 +78,8 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
     audioFile: Blob,
     duration: number | null
   ): Promise<boolean> => {
-    const isUsingPersonalApiKey = await userService.getIsUsingPersonalApiKey();
+    const isUsingPersonalApiKey =
+      await userService.getOrSetDefaultIsUsingPersonalApiKey();
     const hasPersonalApiKey = await userService.checkHasPersonalApiKey();
     const consentDataCollection =
       await userService.getOrSetDefaultConsentDataCollection();
@@ -106,7 +107,7 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
     }
 
     if (!isUsingPersonalApiKey && duration > FREE_TIER_MAX_AUDIO_DURATION) {
-      setTranscribeError("免費方案每次錄音最長 10 分鐘，請重新錄音");
+      setTranscribeError("免費方案錄音最長 30 分鐘，請重新錄音");
       return false;
     }
 

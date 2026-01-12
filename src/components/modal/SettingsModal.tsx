@@ -52,7 +52,14 @@ export default function SettingsModal({
       setIsEditingApiKey(hasCompleteApiKey ? false : true);
 
       setNewApiKeyInput("");
-      setConsentDataCollection(userSettings.allowDataCollection);
+
+      // Free tier requires consent;
+      // set consentDataCollection toggle to true on every modal open if user has not consented yet
+      if (!userSettings.useOwnApiKey) {
+        setConsentDataCollection(true);
+      } else {
+        setConsentDataCollection(userSettings.allowDataCollection);
+      }
     })();
   }, [isOpen]);
 
@@ -272,10 +279,6 @@ export default function SettingsModal({
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
                     <span>每小時最多 5 次轉錄</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                    <span>每小時最多轉錄總時長 10 分鐘</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>

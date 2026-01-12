@@ -5,7 +5,11 @@ import {
   ValidateOpenaiApiKeyResponse,
   UserSettings,
 } from "@/src/types";
-import { API_ENDPOINTS } from "@/src/constants";
+import {
+  API_ENDPOINTS,
+  DEFAULT_CONSENT_DATA_COLLECTION,
+  DEFAULT_IS_USING_PERSONAL_API_KEY,
+} from "@/src/constants";
 import { encryptApiKey } from "@/src/lib/apiKeyEncryptor";
 
 class UserService {
@@ -177,8 +181,8 @@ class UserService {
     }
   }
 
-  async getIsUsingPersonalApiKey(): Promise<boolean> {
-    let isUsingPersonalApiKey = null;
+  async getOrSetDefaultIsUsingPersonalApiKey(): Promise<boolean> {
+    let isUsingPersonalApiKey: boolean | null = null;
     try {
       isUsingPersonalApiKey = await this.storage.get(
         USER_INFO_KEYS.USE_PERSONAL_API_KEY,
@@ -193,7 +197,7 @@ class UserService {
     }
 
     if (isUsingPersonalApiKey === null) {
-      isUsingPersonalApiKey = true; // Default to true so we can prompt user to set their own api key
+      isUsingPersonalApiKey = DEFAULT_IS_USING_PERSONAL_API_KEY;
       try {
         await this.storage.set(
           USER_INFO_KEYS.USE_PERSONAL_API_KEY,
@@ -227,7 +231,7 @@ class UserService {
   }
 
   async getOrSetDefaultConsentDataCollection(): Promise<boolean> {
-    let consentDataCollection = null;
+    let consentDataCollection: boolean | null = null;
     try {
       consentDataCollection = await this.storage.get(
         USER_INFO_KEYS.CONSENT_DATA_COLLECTION,
@@ -242,7 +246,7 @@ class UserService {
     }
 
     if (consentDataCollection === null) {
-      consentDataCollection = false; // Default to false to make sure user fully consent to data collection
+      consentDataCollection = DEFAULT_CONSENT_DATA_COLLECTION;
       try {
         await this.storage.set(
           USER_INFO_KEYS.CONSENT_DATA_COLLECTION,
@@ -276,11 +280,9 @@ class UserService {
   }
 
   async getUserSettings(): Promise<UserSettings> {
-    const isUsingPersonalApiKey = await this.getIsUsingPersonalApiKey();
-
     const userSettings: UserSettings = {
       deviceId: await this.getOrCreateDeviceId(),
-      useOwnApiKey: isUsingPersonalApiKey,
+      useOwnApiKey: await this.getOrSetDefaultIsUsingPersonalApiKey(),
       allowDataCollection: await this.getOrSetDefaultConsentDataCollection(),
       encryptedCustomOpenaiApiKey: await this.getEncryptedCustomOpenaiApiKey(),
       maskedCustomOpenaiApiKey: await this.getMaskedCustomOpenaiApiKey(),
