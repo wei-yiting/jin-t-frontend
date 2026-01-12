@@ -211,7 +211,7 @@ class UserService {
       }
     }
 
-    return isUsingPersonalApiKey ?? DEFAULT_IS_USING_PERSONAL_API_KEY;
+    return isUsingPersonalApiKey;
   }
 
   async saveIsUsingPersonalApiKey(
@@ -260,7 +260,7 @@ class UserService {
       }
     }
 
-    return consentDataCollection ?? DEFAULT_CONSENT_DATA_COLLECTION;
+    return consentDataCollection;
   }
 
   async saveConsentDataCollection(

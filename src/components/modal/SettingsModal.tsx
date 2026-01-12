@@ -53,19 +53,10 @@ export default function SettingsModal({
 
       setNewApiKeyInput("");
 
-      // Free tier requires consent; enforce true state on every modal open
+      // Free tier requires consent;
+      // set consentDataCollection toggle to true on every modal open if user has not consented yet
       if (!userSettings.useOwnApiKey) {
         setConsentDataCollection(true);
-        if (!userSettings.allowDataCollection) {
-          try {
-            await userService.saveConsentDataCollection(true);
-          } catch (error) {
-            console.error(
-              "Error migrating consent data collection for free tier:",
-              error
-            );
-          }
-        }
       } else {
         setConsentDataCollection(userSettings.allowDataCollection);
       }
