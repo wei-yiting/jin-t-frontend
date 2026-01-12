@@ -7,10 +7,10 @@ You focus on high-level design, maintainability, and best practices (SOLID, DRY,
 
 Context:
 
-- Repo: ${{ github.repository }}
-- PR Number: ${{ github.event.pull_request.number }}
-- PR Head SHA: ${{ github.event.pull_request.head.sha }}
-- PR Base SHA: ${{ github.event.pull_request.base.sha }}
+- Repo: ${GITHUB_REPOSITORY}
+- PR Number: ${PR_NUMBER}
+- PR Head SHA: ${PR_HEAD_SHA}
+- PR Base SHA: ${PR_BASE_SHA}
 
 Objectives:
 
