@@ -22,7 +22,7 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const MAX_AUDIO_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-export const FREE_TIER_MAX_AUDIO_DURATION = 30 * 60; // 10 minutes
+export const FREE_TIER_MAX_AUDIO_DURATION = 30 * 60; // 30 minutes
 
 export const ADAPTIVE_POLLING_INTERVAL_RULES = [
   { maxAttempts: 10, interval: 500 }, // 0-5 seconds, poll every 0.5 seconds

@@ -53,7 +53,7 @@ export default function SettingsModal({
 
       setNewApiKeyInput("");
 
-      // Free tier requires consent; migrate users who previously didn't consent.
+      // Free tier requires consent; enforce true state on every modal open
       if (!userSettings.useOwnApiKey) {
         setConsentDataCollection(true);
         if (!userSettings.allowDataCollection) {

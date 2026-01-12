@@ -78,7 +78,8 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
     audioFile: Blob,
     duration: number | null
   ): Promise<boolean> => {
-    const isUsingPersonalApiKey = await userService.getIsUsingPersonalApiKey();
+    const isUsingPersonalApiKey =
+      await userService.getOrSetDefaultIsUsingPersonalApiKey();
     const hasPersonalApiKey = await userService.checkHasPersonalApiKey();
     const consentDataCollection =
       await userService.getOrSetDefaultConsentDataCollection();
