@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 import { DEFAULT_MODE } from "@/src/constants";
 import { AppStatus, TranscribeMode } from "@/src/types";
@@ -28,11 +28,36 @@ export default function ControlBar({
     transcribe,
     setTranscribeError,
     clearTranscript,
+    transcribeProgressMessage,
+    transcribePhase,
   } = useTranscribeContext();
   const [controlBarStatus, setControlBarStatus] = useState<AppStatus>("idle");
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
+
+  useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "ControlBar.tsx:state",
+        message: "ui:controlbar",
+        data: {
+          isTranscribing,
+          controlBarStatus,
+          transcribePhase,
+          progressMessageLength: transcribeProgressMessage?.length ?? 0,
+        },
+        timestamp: Date.now(),
+        sessionId: "debug-session",
+        runId: "pre-fix",
+        hypothesisId: "H6",
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [isTranscribing, controlBarStatus, transcribePhase, transcribeProgressMessage]);
 
   const {
     audioBlob,
