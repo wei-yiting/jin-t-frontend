@@ -3,8 +3,8 @@ import { API_ENDPOINTS } from "@/src/constants";
 import {
   TranscribeParams,
   UserSettings,
-  TranscribeProgressResponse,
   BeginTranscribeResponse,
+  StreamEventResponse,
 } from "@/src/types";
 import { getFileExtensionFromMimeType } from "@/src/lib/audioHelpers";
 
@@ -48,10 +48,14 @@ class TranscribeService {
   }
 
   async getTranscribeProgress(
-    taskId: string
-  ): Promise<TranscribeProgressResponse> {
-    return this.httpClient.get<TranscribeProgressResponse>(
-      `${API_ENDPOINTS.TRANSCRIBE_TASK}/${taskId}`
+    taskId: string,
+    lastId: string = "0-0"
+  ): Promise<StreamEventResponse> {
+    return this.httpClient.get<StreamEventResponse>(
+      `${API_ENDPOINTS.TRANSCRIBE_TASK}/${taskId}`,
+      {
+        params: { last_id: lastId },
+      }
     );
   }
 }

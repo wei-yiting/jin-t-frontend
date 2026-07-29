@@ -13,34 +13,29 @@ import { transcribeService, userService } from "@/src/services";
 import {
   TranscribeMode,
   UserSettings,
-  TaskStatus,
-  TaskProgressCode,
+  TranscribeStreamEventType,
+  TaskFailedStreamEvent,
+  PuncFixingStreamEvent,
 } from "@/src/types";
+import {
+  ReceivedChunksWithStatus,
+  useTranscribeStream,
+} from "@/src/hooks/useTranscribeStream";
 import {
   MAX_AUDIO_FILE_SIZE,
   FREE_TIER_MAX_AUDIO_DURATION,
-  ADAPTIVE_POLLING_INTERVAL_RULES,
-  MAX_RETRY_ATTEMPTS,
-  RETRY_INTERVAL,
+  TRANSCRIBE_STREAM_MAX_RETRY_ATTEMPTS,
+  TRANSCRIBE_STREAM_RETRY_INTERVAL,
 } from "@/src/constants";
-
-const getAdaptivePollingInterval = (attempts: number) => {
-  const rule = ADAPTIVE_POLLING_INTERVAL_RULES.find(
-    (rule) => attempts <= rule.maxAttempts
-  );
-  if (!rule) {
-    throw new Error("轉錄連線超時，請稍後再試");
-  }
-  return rule.interval;
-};
 
 interface TranscribeContextValue {
   isTranscribing: boolean;
-  transcribeTaskStatus: TaskStatus;
-  transcribeProgressCode: TaskProgressCode | null;
-  transcribeProgressMessage: string;
-  transcriptText: string | null;
   transcribeError: string | null;
+  transcriptText: string | null;
+  transcribeProgressMessage: string;
+  transcribePhase: TranscribeStreamEventType | null;
+  transcribeReceivedChunks: ReceivedChunksWithStatus[];
+  transcriptInProgress: string | null;
   transcribe: (
     audioFile: Blob,
     mode: TranscribeMode,
@@ -55,16 +50,18 @@ const TranscribeContext = createContext<TranscribeContextValue | null>(null);
 
 export function TranscribeProvider({ children }: { children: ReactNode }) {
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [progressCode, setProgressCode] = useState<TaskProgressCode | null>(
-    null
-  );
-  const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
-  const [progressMessage, setProgressMessage] = useState<string>("");
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
+  const {
+    transcribeProgressMessage,
+    transcribePhase,
+    transcribeReceivedChunks,
+    transcriptInProgress,
+    dispatchStreamEvent,
+  } = useTranscribeStream();
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pollAttemptsRef = useRef<number>(0);
   const retryAttemptsRef = useRef<number>(0);
+  const lastIdRef = useRef<string>("0-0");
 
   useEffect(function cleanupPollTimeout() {
     return () => {
@@ -114,76 +111,222 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
-  const adaptivePollingTranscribeResult = useCallback(
+  const pollTranscribeStream = useCallback(
     async (taskId: string) => {
-      pollAttemptsRef.current = 0;
       retryAttemptsRef.current = 0;
 
-      const poll = async () => {
-        try {
-          const {
-            status: receivedTaskStatus,
-            progress_code: receivedProgressCode,
-            message: receivedMessage,
-            error_detail,
-            transcript: receivedTranscript,
-          } = await transcribeService.getTranscribeProgress(taskId);
-
-          if (receivedTaskStatus === TaskStatus.COMPLETED) {
-            setTaskStatus(receivedTaskStatus);
-            setProgressCode(null);
-            setProgressMessage("");
-            setIsTranscribing(false);
-            setTranscriptText((prev) =>
-              prev ? prev + "\n" + receivedTranscript : receivedTranscript
-            );
-            return;
-          }
-
-          if (receivedTaskStatus === TaskStatus.FAILED) {
-            setTaskStatus(receivedTaskStatus);
-            setProgressCode(null);
-            setProgressMessage("");
-            setIsTranscribing(false);
-            setTranscribeError(error_detail);
-            return;
-          }
-
-          //Transcribe status is either queued or processing, setup another request to poll again
-
-          pollAttemptsRef.current++;
-
-          let interval: number;
+      return await new Promise<void>((resolve) => {
+        const poll = async () => {
           try {
-            interval = getAdaptivePollingInterval(pollAttemptsRef.current);
+            // #region agent log
+            fetch(
+              "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  location: "TranscribeContext.tsx:poll:start",
+                  message: "poll:start",
+                  data: {
+                    taskId,
+                    lastId: lastIdRef.current,
+                    retryAttempts: retryAttemptsRef.current,
+                  },
+                  timestamp: Date.now(),
+                  sessionId: "debug-session",
+                  runId: "pre-fix",
+                  hypothesisId: "H2",
+                }),
+              }
+            ).catch(() => {});
+            // #endregion
+            const response = await transcribeService.getTranscribeProgress(
+              taskId,
+              lastIdRef.current
+            );
+            const messageTypeCounts = response.messages.reduce<
+              Record<string, number>
+            >((acc, message) => {
+              acc[message.type] = (acc[message.type] || 0) + 1;
+              return acc;
+            }, {});
+            const payloadTypeCountsByEvent = response.messages.reduce<
+              Record<string, Record<string, number>>
+            >((acc, message) => {
+              const key = message.type;
+              acc[key] = acc[key] || {};
+              const payloadType = typeof message.payload;
+              acc[key][payloadType] = (acc[key][payloadType] || 0) + 1;
+              return acc;
+            }, {});
+            // #region agent log
+            fetch(
+              "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  location: "TranscribeContext.tsx:poll:response",
+                  message: "poll:response",
+                  data: {
+                    messageCount: response.messages.length,
+                    messageTypeCounts,
+                    payloadTypeCountsByEvent,
+                    lastId: response.last_id,
+                    newLastId: (response as { new_last_id?: string })
+                      .new_last_id,
+                  },
+                  timestamp: Date.now(),
+                  sessionId: "debug-session",
+                  runId: "pre-fix",
+                  hypothesisId: "H1",
+                }),
+              }
+            ).catch(() => {});
+            // #endregion
+            lastIdRef.current = response.last_id || lastIdRef.current;
+
+            let shouldStop = false;
+            for (const message of response.messages) {
+              const payloadValue = message.payload as unknown;
+              const payloadType = typeof payloadValue;
+              const payloadKeys =
+                payloadValue && payloadType === "object"
+                  ? Object.keys(payloadValue as Record<string, unknown>)
+                  : null;
+              // #region agent log
+              fetch(
+                "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    location: "TranscribeContext.tsx:poll:message",
+                    message: "poll:message",
+                    data: {
+                      type: message.type,
+                      payloadType,
+                      payloadKeys,
+                      payloadLength:
+                        payloadType === "string"
+                          ? (payloadValue as string).length
+                          : null,
+                    },
+                    timestamp: Date.now(),
+                    sessionId: "debug-session",
+                    runId: "pre-fix",
+                    hypothesisId: "H3",
+                  }),
+                }
+              ).catch(() => {});
+              // #endregion
+              if (message.type === TranscribeStreamEventType.TASK_FAILED) {
+                setIsTranscribing(false);
+                setTranscribeError(
+                  (message as TaskFailedStreamEvent).payload.error ||
+                    "轉錄失敗，請稍後再試"
+                );
+                shouldStop = true;
+                break;
+              }
+
+              if (message.type === TranscribeStreamEventType.TASK_FINISHED) {
+                setIsTranscribing(false);
+                setTranscriptText((prev) => {
+                  const prevLength = prev?.length ?? 0;
+                  const finalResult =
+                    message.payload.final_result ??
+                    (message as unknown as PuncFixingStreamEvent).payload
+                      .consolidated_text;
+                  const finalResultLength =
+                    typeof finalResult === "string" ? finalResult.length : null;
+                  // #region agent log
+                  fetch(
+                    "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        location: "TranscribeContext.tsx:task_finished",
+                        message: "task:finished",
+                        data: {
+                          prevIsNull: prev === null,
+                          prevLength,
+                          finalResultLength,
+                        },
+                        timestamp: Date.now(),
+                        sessionId: "debug-session",
+                        runId: "pre-fix",
+                        hypothesisId: "H8",
+                      }),
+                    }
+                  ).catch(() => {});
+                  // #endregion
+                  const safePrev = prev ?? "";
+                  const safeFinal =
+                    typeof finalResult === "string" ? finalResult : "";
+                  return safePrev + (safePrev ? "\n" : "") + safeFinal;
+                });
+                shouldStop = true;
+                break;
+              }
+
+              dispatchStreamEvent(message);
+            }
+
+            if (shouldStop) {
+              resolve();
+              return;
+            }
+
+            // Poll immediately
+            pollTimeoutRef.current = setTimeout(poll, 0);
           } catch (err: unknown) {
-            // Timeout error, stop polling immediately
-            setIsTranscribing(false);
-            setTranscribeError((err as Error).message);
-            return;
-          }
-
-          pollTimeoutRef.current = setTimeout(poll, interval);
-
-          setTaskStatus(receivedTaskStatus);
-          setProgressMessage(receivedMessage);
-          setProgressCode(receivedProgressCode);
-        } catch (err: unknown) {
-          retryAttemptsRef.current++;
-
-          if (retryAttemptsRef.current > MAX_RETRY_ATTEMPTS) {
-            setIsTranscribing(false);
             const errorMessage =
-              (err as { message?: string })?.message || "轉錄失敗，請稍後再試";
-            setTranscribeError(errorMessage);
-            return;
+              (err as { message?: string })?.message || "unknown";
+            const errorCode = (err as { code?: string })?.code || null;
+            // #region agent log
+            fetch(
+              "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  location: "TranscribeContext.tsx:poll:error",
+                  message: "poll:error",
+                  data: {
+                    errorMessage,
+                    errorCode,
+                    retryAttempts: retryAttemptsRef.current,
+                  },
+                  timestamp: Date.now(),
+                  sessionId: "debug-session",
+                  runId: "pre-fix",
+                  hypothesisId: "H2",
+                }),
+              }
+            ).catch(() => {});
+            // #endregion
+            retryAttemptsRef.current++;
+
+            if (
+              retryAttemptsRef.current > TRANSCRIBE_STREAM_MAX_RETRY_ATTEMPTS
+            ) {
+              setIsTranscribing(false);
+              setTranscribeError(errorMessage || "轉錄失敗，請稍後再試");
+              resolve();
+              return;
+            }
+
+            pollTimeoutRef.current = setTimeout(
+              poll,
+              TRANSCRIBE_STREAM_RETRY_INTERVAL
+            );
           }
+        };
 
-          pollTimeoutRef.current = setTimeout(poll, RETRY_INTERVAL);
-        }
-      };
-
-      poll();
+        poll();
+      });
     },
     [setTranscriptText, setTranscribeError]
   );
@@ -225,15 +368,15 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
           usageConfig
         );
 
-        adaptivePollingTranscribeResult(beginTranscribeResponse.task_id);
+        await pollTranscribeStream(beginTranscribeResponse.task_id);
       } catch (err: unknown) {
+        setIsTranscribing(false);
         const errorMessage =
-          (err as { message?: string })?.message ||
-          "Failed to poll transcribe progress";
+          (err as { message?: string })?.message || "轉錄失敗，請稍後再試";
         setTranscribeError(errorMessage);
       }
     },
-    [adaptivePollingTranscribeResult]
+    [pollTranscribeStream]
   );
 
   const clearTranscript = useCallback(() => {
@@ -248,11 +391,12 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
 
   const value: TranscribeContextValue = {
     isTranscribing,
-    transcribeTaskStatus: taskStatus,
-    transcribeProgressCode: progressCode,
-    transcribeProgressMessage: progressMessage,
-    transcriptText,
     transcribeError,
+    transcriptText,
+    transcribeProgressMessage,
+    transcribePhase,
+    transcribeReceivedChunks,
+    transcriptInProgress,
     transcribe,
     clearTranscript,
     setTranscriptText: setManualTranscript,
