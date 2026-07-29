@@ -15,7 +15,6 @@ import {
   UserSettings,
   TranscribeStreamEventType,
   TaskFailedStreamEvent,
-  PuncFixingStreamEvent,
 } from "@/src/types";
 import {
   ReceivedChunksWithStatus,
@@ -118,108 +117,14 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
       return await new Promise<void>((resolve) => {
         const poll = async () => {
           try {
-            // #region agent log
-            fetch(
-              "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  location: "TranscribeContext.tsx:poll:start",
-                  message: "poll:start",
-                  data: {
-                    taskId,
-                    lastId: lastIdRef.current,
-                    retryAttempts: retryAttemptsRef.current,
-                  },
-                  timestamp: Date.now(),
-                  sessionId: "debug-session",
-                  runId: "pre-fix",
-                  hypothesisId: "H2",
-                }),
-              }
-            ).catch(() => {});
-            // #endregion
             const response = await transcribeService.getTranscribeProgress(
               taskId,
               lastIdRef.current
             );
-            const messageTypeCounts = response.messages.reduce<
-              Record<string, number>
-            >((acc, message) => {
-              acc[message.type] = (acc[message.type] || 0) + 1;
-              return acc;
-            }, {});
-            const payloadTypeCountsByEvent = response.messages.reduce<
-              Record<string, Record<string, number>>
-            >((acc, message) => {
-              const key = message.type;
-              acc[key] = acc[key] || {};
-              const payloadType = typeof message.payload;
-              acc[key][payloadType] = (acc[key][payloadType] || 0) + 1;
-              return acc;
-            }, {});
-            // #region agent log
-            fetch(
-              "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  location: "TranscribeContext.tsx:poll:response",
-                  message: "poll:response",
-                  data: {
-                    messageCount: response.messages.length,
-                    messageTypeCounts,
-                    payloadTypeCountsByEvent,
-                    lastId: response.last_id,
-                    newLastId: (response as { new_last_id?: string })
-                      .new_last_id,
-                  },
-                  timestamp: Date.now(),
-                  sessionId: "debug-session",
-                  runId: "pre-fix",
-                  hypothesisId: "H1",
-                }),
-              }
-            ).catch(() => {});
-            // #endregion
             lastIdRef.current = response.last_id || lastIdRef.current;
 
             let shouldStop = false;
             for (const message of response.messages) {
-              const payloadValue = message.payload as unknown;
-              const payloadType = typeof payloadValue;
-              const payloadKeys =
-                payloadValue && payloadType === "object"
-                  ? Object.keys(payloadValue as Record<string, unknown>)
-                  : null;
-              // #region agent log
-              fetch(
-                "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    location: "TranscribeContext.tsx:poll:message",
-                    message: "poll:message",
-                    data: {
-                      type: message.type,
-                      payloadType,
-                      payloadKeys,
-                      payloadLength:
-                        payloadType === "string"
-                          ? (payloadValue as string).length
-                          : null,
-                    },
-                    timestamp: Date.now(),
-                    sessionId: "debug-session",
-                    runId: "pre-fix",
-                    hypothesisId: "H3",
-                  }),
-                }
-              ).catch(() => {});
-              // #endregion
               if (message.type === TranscribeStreamEventType.TASK_FAILED) {
                 setIsTranscribing(false);
                 setTranscribeError(
@@ -233,39 +138,9 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
               if (message.type === TranscribeStreamEventType.TASK_FINISHED) {
                 setIsTranscribing(false);
                 setTranscriptText((prev) => {
-                  const prevLength = prev?.length ?? 0;
-                  const finalResult =
-                    message.payload.final_result ??
-                    (message as unknown as PuncFixingStreamEvent).payload
-                      .consolidated_text;
-                  const finalResultLength =
-                    typeof finalResult === "string" ? finalResult.length : null;
-                  // #region agent log
-                  fetch(
-                    "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-                    {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        location: "TranscribeContext.tsx:task_finished",
-                        message: "task:finished",
-                        data: {
-                          prevIsNull: prev === null,
-                          prevLength,
-                          finalResultLength,
-                        },
-                        timestamp: Date.now(),
-                        sessionId: "debug-session",
-                        runId: "pre-fix",
-                        hypothesisId: "H8",
-                      }),
-                    }
-                  ).catch(() => {});
-                  // #endregion
+                  const finalResult = message.payload.final_result ?? "";
                   const safePrev = prev ?? "";
-                  const safeFinal =
-                    typeof finalResult === "string" ? finalResult : "";
-                  return safePrev + (safePrev ? "\n" : "") + safeFinal;
+                  return safePrev + (safePrev ? "\n" : "") + finalResult;
                 });
                 shouldStop = true;
                 break;
@@ -284,29 +159,6 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
           } catch (err: unknown) {
             const errorMessage =
               (err as { message?: string })?.message || "unknown";
-            const errorCode = (err as { code?: string })?.code || null;
-            // #region agent log
-            fetch(
-              "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  location: "TranscribeContext.tsx:poll:error",
-                  message: "poll:error",
-                  data: {
-                    errorMessage,
-                    errorCode,
-                    retryAttempts: retryAttemptsRef.current,
-                  },
-                  timestamp: Date.now(),
-                  sessionId: "debug-session",
-                  runId: "pre-fix",
-                  hypothesisId: "H2",
-                }),
-              }
-            ).catch(() => {});
-            // #endregion
             retryAttemptsRef.current++;
 
             if (
@@ -328,7 +180,7 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
         poll();
       });
     },
-    [setTranscriptText, setTranscribeError]
+    [setTranscriptText, setTranscribeError, dispatchStreamEvent]
   );
 
   const transcribe = useCallback(

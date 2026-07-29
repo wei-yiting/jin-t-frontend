@@ -70,35 +70,6 @@ class HttpClient {
   async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(endpoint, config);
     if (endpoint.startsWith("/transcribe-tasks")) {
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "httpClient.ts:get:response",
-            message: "http:get:response",
-            data: {
-              endpoint,
-              status: response.status,
-              dataType: typeof response.data,
-              dataKeys:
-                response.data && typeof response.data === "object"
-                  ? Object.keys(response.data as Record<string, unknown>)
-                  : null,
-              dataLength:
-                typeof response.data === "string" ? response.data.length : null,
-              contentType: response.headers?.["content-type"] ?? null,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "pre-fix",
-            hypothesisId: "H2",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
     }
     return response.data;
   }

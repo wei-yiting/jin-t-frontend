@@ -28,67 +28,6 @@ export default function TranscriptBlock() {
     }
   }, [transcribeReceivedChunks]);
 
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "TranscriptBlock.tsx:state",
-        message: "ui:state",
-        data: {
-          isTranscribing,
-          transcriptTextLength: transcriptText?.length ?? 0,
-          transcriptInProgressLength: transcriptInProgress?.length ?? 0,
-          receivedChunksCount: transcribeReceivedChunks.length,
-        },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H5",
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [
-    isTranscribing,
-    transcriptText,
-    transcriptInProgress,
-    transcribeReceivedChunks.length,
-  ]);
-
-  useEffect(() => {
-    const newChunkEl = document.querySelector<HTMLElement>(".breath-new");
-    const oldChunkEl = document.querySelector<HTMLElement>(".breath-old");
-    const newChunkStyle = newChunkEl
-      ? window.getComputedStyle(newChunkEl)
-      : null;
-    const oldChunkStyle = oldChunkEl
-      ? window.getComputedStyle(oldChunkEl)
-      : null;
-    // #region agent log
-    fetch("http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "TranscriptBlock.tsx:styles",
-        message: "ui:styles",
-        data: {
-          hasBreathNew: !!newChunkEl,
-          hasBreathOld: !!oldChunkEl,
-          breathNewOpacity: newChunkStyle?.opacity ?? null,
-          breathNewAnimation: newChunkStyle?.animationName ?? null,
-          breathOldOpacity: oldChunkStyle?.opacity ?? null,
-          breathOldAnimation: oldChunkStyle?.animationName ?? null,
-        },
-        timestamp: Date.now(),
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H7",
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [transcribeReceivedChunks, transcriptInProgress]);
-
   useEffect(
     function updateTranscriptTextareaHeight() {
       if (!transcriptText || wasEditingTranscriptTextRef.current) return;

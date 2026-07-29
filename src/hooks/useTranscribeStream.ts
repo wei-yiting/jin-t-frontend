@@ -42,27 +42,6 @@ const streamReducer = (
       };
     case TranscribeStreamEventType.TASK_STARTED: {
       const totalChunksNumber = Number(payload.total_chunks);
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "useTranscribeStream.ts:reducer:TASK_STARTED",
-            message: "reducer:TASK_STARTED",
-            data: {
-              totalChunksRaw: payload?.total_chunks,
-              totalChunksNumber,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "pre-fix",
-            hypothesisId: "H3",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
       return {
         ...state,
         transcribePhase: eventType,
@@ -96,28 +75,6 @@ const streamReducer = (
         .slice()
         .sort((a, b) => a.chunk_index - b.chunk_index);
 
-      // #region agent log
-      fetch(
-        "http://127.0.0.1:7243/ingest/f35e24fa-e6e7-428f-a9d6-25a05c1c60f1",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            location: "useTranscribeStream.ts:reducer:CHUNK_COMPLETED",
-            message: "reducer:CHUNK_COMPLETED",
-            data: {
-              chunkIndex: payload?.chunk_index,
-              payloadTextLength: payload?.text?.length ?? null,
-              updatedChunksCount: sortedUpdatedChunks.length,
-            },
-            timestamp: Date.now(),
-            sessionId: "debug-session",
-            runId: "pre-fix",
-            hypothesisId: "H4",
-          }),
-        }
-      ).catch(() => {});
-      // #endregion
       return {
         ...state,
         transcribePhase: eventType,
@@ -138,6 +95,13 @@ const streamReducer = (
         transcribePhase: eventType,
         transcriptInProgress: payload.consolidated_text,
         progressMessage: "正在修正標點符號...",
+      };
+    case TranscribeStreamEventType.REFINING:
+      return {
+        ...state,
+        transcribePhase: eventType,
+        transcriptInProgress: payload.consolidated_text,
+        progressMessage: "正在潤飾文字...",
       };
     case TranscribeStreamEventType.TASK_FINISHED:
       return {
