@@ -60,6 +60,7 @@ export enum TranscribeStreamEventType {
   CHUNK_COMPLETED = "CHUNK_COMPLETED",
   CHUNKS_CONSOLIDATING = "CHUNKS_CONSOLIDATING",
   PUNC_FIXING = "PUNC_FIXING",
+  REFINING = "REFINING",
   TASK_FINISHED = "TASK_FINISHED",
   TASK_FAILED = "TASK_FAILED",
 }
@@ -96,6 +97,13 @@ export interface PuncFixingStreamEvent {
   };
 }
 
+export interface RefiningStreamEvent {
+  type: TranscribeStreamEventType.REFINING;
+  payload: {
+    consolidated_text: string;
+  };
+}
+
 export interface TaskFinishedStreamEvent {
   type: TranscribeStreamEventType.TASK_FINISHED;
   payload: {
@@ -116,6 +124,7 @@ export type StreamEvent =
   | ChunkCompletedStreamEvent
   | ChunksConsolidatingStreamEvent
   | PuncFixingStreamEvent
+  | RefiningStreamEvent
   | TaskFinishedStreamEvent
   | TaskFailedStreamEvent;
 
