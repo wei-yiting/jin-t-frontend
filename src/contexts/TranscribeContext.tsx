@@ -57,6 +57,7 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
     transcribeReceivedChunks,
     transcriptInProgress,
     dispatchStreamEvent,
+    resetStream,
   } = useTranscribeStream();
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const retryAttemptsRef = useRef<number>(0);
@@ -125,6 +126,8 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
 
             let shouldStop = false;
             for (const message of response.messages) {
+              dispatchStreamEvent(message);
+
               if (message.type === TranscribeStreamEventType.TASK_FAILED) {
                 setIsTranscribing(false);
                 setTranscribeError(
@@ -145,8 +148,6 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
                 shouldStop = true;
                 break;
               }
-
-              dispatchStreamEvent(message);
             }
 
             if (shouldStop) {
@@ -234,7 +235,8 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
   const clearTranscript = useCallback(() => {
     setTranscriptText(null);
     setTranscribeError(null);
-  }, []);
+    resetStream();
+  }, [resetStream]);
 
   const setManualTranscript = useCallback((value: string) => {
     setTranscriptText(value);

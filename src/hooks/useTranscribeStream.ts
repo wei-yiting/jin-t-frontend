@@ -28,10 +28,16 @@ const initialStreamState: StreamState = {
   streamDone: false,
 };
 
+type StreamAction = StreamEvent | { type: "RESET" };
+
 const streamReducer = (
   state: StreamState,
-  action: StreamEvent
+  action: StreamAction
 ): StreamState => {
+  if (action.type === "RESET") {
+    return initialStreamState;
+  }
+
   const { type: eventType, payload } = action;
   switch (eventType) {
     case TranscribeStreamEventType.TASK_QUEUED:
@@ -120,11 +126,14 @@ export const useTranscribeStream = () => {
     initialStreamState
   );
 
+  const resetStream = () => dispatchStreamEvent({ type: "RESET" });
+
   return {
     transcribeProgressMessage: streamState.progressMessage,
     transcribePhase: streamState.transcribePhase,
     transcribeReceivedChunks: streamState.receivedChunks,
     transcriptInProgress: streamState.transcriptInProgress,
     dispatchStreamEvent,
+    resetStream,
   };
 };
