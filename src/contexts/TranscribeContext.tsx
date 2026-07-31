@@ -13,28 +13,34 @@ import { transcribeService, userService } from "@/src/services";
 import {
   TranscribeMode,
   UserSettings,
-  TranscribeStreamEventType,
-  TaskFailedStreamEvent,
+  TaskStatus,
+  TaskProgressCode,
 } from "@/src/types";
-import {
-  ReceivedChunksWithStatus,
-  useTranscribeStream,
-} from "@/src/hooks/useTranscribeStream";
 import {
   MAX_AUDIO_FILE_SIZE,
   FREE_TIER_MAX_AUDIO_DURATION,
-  TRANSCRIBE_STREAM_MAX_RETRY_ATTEMPTS,
-  TRANSCRIBE_STREAM_RETRY_INTERVAL,
+  ADAPTIVE_POLLING_INTERVAL_RULES,
+  MAX_RETRY_ATTEMPTS,
+  RETRY_INTERVAL,
 } from "@/src/constants";
+
+const getAdaptivePollingInterval = (attempts: number) => {
+  const rule = ADAPTIVE_POLLING_INTERVAL_RULES.find(
+    (rule) => attempts <= rule.maxAttempts
+  );
+  if (!rule) {
+    throw new Error("轉錄連線超時，請稍後再試");
+  }
+  return rule.interval;
+};
 
 interface TranscribeContextValue {
   isTranscribing: boolean;
-  transcribeError: string | null;
-  transcriptText: string | null;
+  transcribeTaskStatus: TaskStatus;
+  transcribeProgressCode: TaskProgressCode | null;
   transcribeProgressMessage: string;
-  transcribePhase: TranscribeStreamEventType | null;
-  transcribeReceivedChunks: ReceivedChunksWithStatus[];
-  transcriptInProgress: string | null;
+  transcriptText: string | null;
+  transcribeError: string | null;
   transcribe: (
     audioFile: Blob,
     mode: TranscribeMode,
@@ -49,19 +55,16 @@ const TranscribeContext = createContext<TranscribeContextValue | null>(null);
 
 export function TranscribeProvider({ children }: { children: ReactNode }) {
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [progressCode, setProgressCode] = useState<TaskProgressCode | null>(
+    null
+  );
+  const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null);
+  const [progressMessage, setProgressMessage] = useState<string>("");
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
-  const {
-    transcribeProgressMessage,
-    transcribePhase,
-    transcribeReceivedChunks,
-    transcriptInProgress,
-    dispatchStreamEvent,
-    resetStream,
-  } = useTranscribeStream();
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollAttemptsRef = useRef<number>(0);
   const retryAttemptsRef = useRef<number>(0);
-  const lastIdRef = useRef<string>("0-0");
 
   useEffect(function cleanupPollTimeout() {
     return () => {
@@ -111,77 +114,78 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
-  const pollTranscribeStream = useCallback(
+  const adaptivePollingTranscribeResult = useCallback(
     async (taskId: string) => {
+      pollAttemptsRef.current = 0;
       retryAttemptsRef.current = 0;
 
-      return await new Promise<void>((resolve) => {
-        const poll = async () => {
-          try {
-            const response = await transcribeService.getTranscribeProgress(
-              taskId,
-              lastIdRef.current
+      const poll = async () => {
+        try {
+          const {
+            status: receivedTaskStatus,
+            progress_code: receivedProgressCode,
+            message: receivedMessage,
+            error_detail,
+            transcript: receivedTranscript,
+          } = await transcribeService.getTranscribeProgress(taskId);
+
+          if (receivedTaskStatus === TaskStatus.COMPLETED) {
+            setTaskStatus(receivedTaskStatus);
+            setProgressCode(null);
+            setProgressMessage("");
+            setIsTranscribing(false);
+            setTranscriptText((prev) =>
+              prev ? prev + "\n" + receivedTranscript : receivedTranscript
             );
-            lastIdRef.current = response.last_id || lastIdRef.current;
-
-            let shouldStop = false;
-            for (const message of response.messages) {
-              dispatchStreamEvent(message);
-
-              if (message.type === TranscribeStreamEventType.TASK_FAILED) {
-                setIsTranscribing(false);
-                setTranscribeError(
-                  (message as TaskFailedStreamEvent).payload.error ||
-                    "轉錄失敗，請稍後再試"
-                );
-                shouldStop = true;
-                break;
-              }
-
-              if (message.type === TranscribeStreamEventType.TASK_FINISHED) {
-                setIsTranscribing(false);
-                setTranscriptText((prev) => {
-                  const finalResult = message.payload.final_result ?? "";
-                  const safePrev = prev ?? "";
-                  return safePrev + (safePrev ? "\n" : "") + finalResult;
-                });
-                shouldStop = true;
-                break;
-              }
-            }
-
-            if (shouldStop) {
-              resolve();
-              return;
-            }
-
-            // Poll immediately
-            pollTimeoutRef.current = setTimeout(poll, 0);
-          } catch (err: unknown) {
-            const errorMessage =
-              (err as { message?: string })?.message || "unknown";
-            retryAttemptsRef.current++;
-
-            if (
-              retryAttemptsRef.current > TRANSCRIBE_STREAM_MAX_RETRY_ATTEMPTS
-            ) {
-              setIsTranscribing(false);
-              setTranscribeError(errorMessage || "轉錄失敗，請稍後再試");
-              resolve();
-              return;
-            }
-
-            pollTimeoutRef.current = setTimeout(
-              poll,
-              TRANSCRIBE_STREAM_RETRY_INTERVAL
-            );
+            return;
           }
-        };
 
-        poll();
-      });
+          if (receivedTaskStatus === TaskStatus.FAILED) {
+            setTaskStatus(receivedTaskStatus);
+            setProgressCode(null);
+            setProgressMessage("");
+            setIsTranscribing(false);
+            setTranscribeError(error_detail);
+            return;
+          }
+
+          //Transcribe status is either queued or processing, setup another request to poll again
+
+          pollAttemptsRef.current++;
+
+          let interval: number;
+          try {
+            interval = getAdaptivePollingInterval(pollAttemptsRef.current);
+          } catch (err: unknown) {
+            // Timeout error, stop polling immediately
+            setIsTranscribing(false);
+            setTranscribeError((err as Error).message);
+            return;
+          }
+
+          pollTimeoutRef.current = setTimeout(poll, interval);
+
+          setTaskStatus(receivedTaskStatus);
+          setProgressMessage(receivedMessage);
+          setProgressCode(receivedProgressCode);
+        } catch (err: unknown) {
+          retryAttemptsRef.current++;
+
+          if (retryAttemptsRef.current > MAX_RETRY_ATTEMPTS) {
+            setIsTranscribing(false);
+            const errorMessage =
+              (err as { message?: string })?.message || "轉錄失敗，請稍後再試";
+            setTranscribeError(errorMessage);
+            return;
+          }
+
+          pollTimeoutRef.current = setTimeout(poll, RETRY_INTERVAL);
+        }
+      };
+
+      poll();
     },
-    [setTranscriptText, setTranscribeError, dispatchStreamEvent]
+    [setTranscriptText, setTranscribeError]
   );
 
   const transcribe = useCallback(
@@ -221,22 +225,21 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
           usageConfig
         );
 
-        await pollTranscribeStream(beginTranscribeResponse.task_id);
+        adaptivePollingTranscribeResult(beginTranscribeResponse.task_id);
       } catch (err: unknown) {
-        setIsTranscribing(false);
         const errorMessage =
-          (err as { message?: string })?.message || "轉錄失敗，請稍後再試";
+          (err as { message?: string })?.message ||
+          "Failed to poll transcribe progress";
         setTranscribeError(errorMessage);
       }
     },
-    [pollTranscribeStream]
+    [adaptivePollingTranscribeResult]
   );
 
   const clearTranscript = useCallback(() => {
     setTranscriptText(null);
     setTranscribeError(null);
-    resetStream();
-  }, [resetStream]);
+  }, []);
 
   const setManualTranscript = useCallback((value: string) => {
     setTranscriptText(value);
@@ -245,12 +248,11 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
 
   const value: TranscribeContextValue = {
     isTranscribing,
-    transcribeError,
+    transcribeTaskStatus: taskStatus,
+    transcribeProgressCode: progressCode,
+    transcribeProgressMessage: progressMessage,
     transcriptText,
-    transcribeProgressMessage,
-    transcribePhase,
-    transcribeReceivedChunks,
-    transcriptInProgress,
+    transcribeError,
     transcribe,
     clearTranscript,
     setTranscriptText: setManualTranscript,
