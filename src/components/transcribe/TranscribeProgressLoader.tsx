@@ -1,25 +1,27 @@
 import { useTranscribeContext } from "@/src/contexts";
-import { TranscribeStreamEventType } from "@/src/types";
+import { TaskProgressCode, TaskStatus } from "@/src/types";
 
 export default function TranscribeProgressLoader() {
-  const { transcribeProgressMessage, transcribePhase } = useTranscribeContext();
+  const {
+    transcribeProgressCode,
+    transcribeProgressMessage,
+    transcribeTaskStatus,
+  } = useTranscribeContext();
 
   const getTextColorClass = () => {
-    switch (transcribePhase) {
-      case TranscribeStreamEventType.TASK_QUEUED:
-        return "text-slate-500";
-      case TranscribeStreamEventType.TASK_STARTED:
-      case TranscribeStreamEventType.CHUNK_COMPLETED:
-        return "text-white";
-      case TranscribeStreamEventType.CHUNKS_CONSOLIDATING:
-        return "text-slate-200";
-      case TranscribeStreamEventType.PUNC_FIXING:
-        return "text-emerald-400";
-      case TranscribeStreamEventType.TASK_STARTED:
-      case TranscribeStreamEventType.CHUNK_COMPLETED:
-      default:
-        return "text-slate-200";
-    }
+    if (
+      !transcribeProgressCode ||
+      transcribeTaskStatus !== TaskStatus.PROCESSING
+    )
+      return "text-slate-500";
+    if (transcribeProgressCode === TaskProgressCode.TRANSCRIBING)
+      return "text-white";
+    if (
+      transcribeProgressCode === TaskProgressCode.PUNC_FIXING ||
+      transcribeProgressCode === TaskProgressCode.REFINING
+    )
+      return "text-emerald-400";
+    return "text-slate-200";
   };
 
   const colorClass = getTextColorClass();
@@ -46,7 +48,7 @@ export default function TranscribeProgressLoader() {
         ></path>
       </svg>
       <span className={`text-lg ${colorClass}`}>
-        {transcribeProgressMessage || ""}
+        {transcribeProgressMessage}
       </span>
     </div>
   );

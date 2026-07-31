@@ -1,5 +1,3 @@
-type EmptyObject = Record<string, never>;
-
 export type TranscribeMode = "fast" | "standard" | "refined";
 export type BillingOption = "free" | "byok";
 
@@ -54,89 +52,27 @@ export interface ValidateOpenaiApiKeyResponse {
   has_unexpectied_validation_error: boolean;
 }
 
-export enum TranscribeStreamEventType {
-  TASK_QUEUED = "TASK_QUEUED",
-  TASK_STARTED = "TASK_STARTED",
-  CHUNK_COMPLETED = "CHUNK_COMPLETED",
-  CHUNKS_CONSOLIDATING = "CHUNKS_CONSOLIDATING",
-  PUNC_FIXING = "PUNC_FIXING",
-  REFINING = "REFINING",
-  TASK_FINISHED = "TASK_FINISHED",
-  TASK_FAILED = "TASK_FAILED",
+export enum TaskStatus {
+  QUEUED = "queued",
+  PROCESSING = "processing",
+  COMPLETED = "completed",
+  FAILED = "failed",
 }
 
-export interface TaskStartedStreamEvent {
-  type: TranscribeStreamEventType.TASK_STARTED;
-  payload: {
-    total_chunks: number;
-  };
-}
-
-export interface TaskQueuedStreamEvent {
-  type: TranscribeStreamEventType.TASK_QUEUED;
-  payload: EmptyObject;
-}
-
-export interface ChunkCompletedStreamEvent {
-  type: TranscribeStreamEventType.CHUNK_COMPLETED;
-  payload: {
-    chunk_index: number;
-    text: string;
-  };
-}
-
-export interface ChunksConsolidatingStreamEvent {
-  type: TranscribeStreamEventType.CHUNKS_CONSOLIDATING;
-  payload: EmptyObject;
-}
-
-export interface PuncFixingStreamEvent {
-  type: TranscribeStreamEventType.PUNC_FIXING;
-  payload: {
-    consolidated_text: string;
-  };
-}
-
-export interface RefiningStreamEvent {
-  type: TranscribeStreamEventType.REFINING;
-  payload: {
-    consolidated_text: string;
-  };
-}
-
-export interface TaskFinishedStreamEvent {
-  type: TranscribeStreamEventType.TASK_FINISHED;
-  payload: {
-    final_result: string;
-  };
-}
-
-export interface TaskFailedStreamEvent {
-  type: TranscribeStreamEventType.TASK_FAILED;
-  payload: {
-    error: string;
-  };
-}
-
-export type StreamEvent =
-  | TaskStartedStreamEvent
-  | TaskQueuedStreamEvent
-  | ChunkCompletedStreamEvent
-  | ChunksConsolidatingStreamEvent
-  | PuncFixingStreamEvent
-  | RefiningStreamEvent
-  | TaskFinishedStreamEvent
-  | TaskFailedStreamEvent;
-
-export type StreamMessage = StreamEvent & {
-  id: string;
-};
-
-export interface StreamEventResponse {
-  messages: StreamMessage[];
-  last_id: string;
+export enum TaskProgressCode {
+  TRANSCRIBING = "transcribing",
+  PUNC_FIXING = "punc_fixing",
+  REFINING = "refining",
 }
 
 export interface BeginTranscribeResponse {
   task_id: string;
+}
+
+export interface TranscribeProgressResponse {
+  status: TaskStatus;
+  progress_code: TaskProgressCode | null;
+  message: string;
+  transcript: string | null;
+  error_detail: string | null;
 }
