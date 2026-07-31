@@ -69,6 +69,8 @@ class HttpClient {
 
   async get<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.client.get<T>(endpoint, config);
+    if (endpoint.startsWith("/transcribe-tasks")) {
+    }
     return response.data;
   }
 }

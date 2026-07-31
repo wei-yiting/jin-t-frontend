@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 import { DEFAULT_MODE } from "@/src/constants";
 import { AppStatus, TranscribeMode } from "@/src/types";
@@ -28,11 +28,16 @@ export default function ControlBar({
     transcribe,
     setTranscribeError,
     clearTranscript,
+    transcribeProgressMessage,
+    transcribePhase,
   } = useTranscribeContext();
   const [controlBarStatus, setControlBarStatus] = useState<AppStatus>("idle");
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
   const [transcribeMode, setTranscribeMode] =
     useState<TranscribeMode>(DEFAULT_MODE);
+
+  useEffect(() => {
+  }, [isTranscribing, controlBarStatus, transcribePhase, transcribeProgressMessage]);
 
   const {
     audioBlob,
@@ -55,7 +60,7 @@ export default function ControlBar({
         );
         setControlBarStatus("transcribed");
         clearBlob();
-      } catch (error) {
+      } catch {
         setRetryBlob(audioBlob);
         setControlBarStatus("transcribe-error");
       }
