@@ -78,7 +78,11 @@ export default function TranscriptBlock() {
   ) : null;
 
   let mainContent: React.ReactNode;
-  if (!!transcriptText) {
+  // `null` means no transcript yet (or cleared via 重新開始); `""` means the
+  // user emptied it themselves and must keep an editable textarea. Treating
+  // both as falsy would drop them into the live-stream branch below and render
+  // the leftover streaming text they just deleted.
+  if (transcriptText !== null) {
     mainContent = (
       <>
         <textarea
@@ -112,7 +116,7 @@ export default function TranscriptBlock() {
         {liveDetailContent}
       </>
     );
-  } else if (!!transcriptInProgress || transcribeReceivedChunks.length) {
+  } else if (shouldShowLiveDetails) {
     mainContent = (
       <p className="w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none min-h-[120px] whitespace-pre-wrap">
         {renderLiveText()}
