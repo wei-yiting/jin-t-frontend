@@ -28,6 +28,17 @@ const initialStreamState: StreamState = {
   streamDone: false,
 };
 
+// Short audio is transcribed in one call, so "1 / 1 段音檔" would describe
+// splitting that never happened. Only surface chunk counts when the audio was
+// actually split.
+const buildTranscribeProgressMessage = (
+  completed: number,
+  total: number | null
+) =>
+  total !== null && total > 1
+    ? `轉錄中, 已完成 ${completed} / ${total} 段音檔...`
+    : "轉錄中...";
+
 type StreamAction = StreamEvent | { type: "RESET" };
 
 const streamReducer = (
@@ -51,7 +62,7 @@ const streamReducer = (
       return {
         ...state,
         transcribePhase: eventType,
-        progressMessage: `轉錄中, 已完成 0 / ${totalChunksNumber} 段音檔...`,
+        progressMessage: buildTranscribeProgressMessage(0, totalChunksNumber),
         totalChunksNumber: totalChunksNumber,
       };
     }
@@ -84,7 +95,10 @@ const streamReducer = (
       return {
         ...state,
         transcribePhase: eventType,
-        progressMessage: `轉錄中, 已完成 ${sortedUpdatedChunks.length} / ${state.totalChunksNumber} 段音檔...`,
+        progressMessage: buildTranscribeProgressMessage(
+          sortedUpdatedChunks.length,
+          state.totalChunksNumber
+        ),
         receivedChunks: sortedUpdatedChunks,
       };
     }
