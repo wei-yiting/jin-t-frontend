@@ -4,9 +4,27 @@ import { Copy, Check } from "lucide-react";
 import { useTranscribeContext } from "@/src/contexts";
 
 const TEXT_AREA_THRESHOLD = 5;
+const PIN_TO_BOTTOM_THRESHOLD_PX = 80;
+
+function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
+  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
+    const { overflowY } = window.getComputedStyle(node);
+    if (
+      (overflowY === "auto" || overflowY === "scroll") &&
+      node.scrollHeight > node.clientHeight
+    ) {
+      return node;
+    }
+  }
+  return null;
+}
 
 export default function TranscriptBlock() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const liveTextRef = useRef<HTMLParagraphElement>(null);
+  // Auto-scroll follows new streaming text only while the user stays near the
+  // bottom; scrolling up to re-read earlier chunks unpins it.
+  const isPinnedToBottomRef = useRef(true);
   const wasEditingTranscriptTextRef = useRef(false);
   const { showIsCopied, copyToClipboard } = useClipboard();
   const {
@@ -27,6 +45,41 @@ export default function TranscriptBlock() {
       wasEditingTranscriptTextRef.current = false;
     }
   }, [transcribeReceivedChunks]);
+
+  useEffect(
+    function resetScrollPinWhenTranscribeStarts() {
+      if (isTranscribing) isPinnedToBottomRef.current = true;
+    },
+    [isTranscribing]
+  );
+
+  useEffect(
+    function autoScrollToLatestLiveText() {
+      if (!shouldShowLiveDetails) return;
+      const scrollable = findScrollableAncestor(liveTextRef.current);
+      if (!scrollable) return;
+
+      const updatePin = () => {
+        const distanceFromBottom =
+          scrollable.scrollHeight -
+          scrollable.scrollTop -
+          scrollable.clientHeight;
+        isPinnedToBottomRef.current =
+          distanceFromBottom < PIN_TO_BOTTOM_THRESHOLD_PX;
+      };
+      scrollable.addEventListener("scroll", updatePin, { passive: true });
+
+      if (isPinnedToBottomRef.current) {
+        // Instant jump, not smooth: a smooth animation fires scroll events
+        // while still far from the bottom, which updatePin reads as the user
+        // scrolling up and permanently unpins auto-follow.
+        scrollable.scrollTo({ top: scrollable.scrollHeight });
+      }
+
+      return () => scrollable.removeEventListener("scroll", updatePin);
+    },
+    [shouldShowLiveDetails, transcribeReceivedChunks, transcriptInProgress]
+  );
 
   useEffect(
     function updateTranscriptTextareaHeight() {
@@ -72,7 +125,10 @@ export default function TranscriptBlock() {
   };
 
   const liveDetailContent = shouldShowLiveDetails ? (
-    <p className="mt-3 w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none whitespace-pre-wrap">
+    <p
+      ref={liveTextRef}
+      className="mt-3 w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none whitespace-pre-wrap"
+    >
       {renderLiveText()}
     </p>
   ) : null;
@@ -118,7 +174,10 @@ export default function TranscriptBlock() {
     );
   } else if (shouldShowLiveDetails) {
     mainContent = (
-      <p className="w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none min-h-[120px] whitespace-pre-wrap">
+      <p
+        ref={liveTextRef}
+        className="w-full bg-transparent text-slate-100 text-base leading-relaxed outline-none min-h-[120px] whitespace-pre-wrap"
+      >
         {renderLiveText()}
       </p>
     );
