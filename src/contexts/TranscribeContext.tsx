@@ -114,6 +114,9 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
   const pollTranscribeStream = useCallback(
     async (taskId: string) => {
       retryAttemptsRef.current = 0;
+      // Each task is its own stream; carrying the previous task's cursor only
+      // works by accident of timestamp-ordered ids.
+      lastIdRef.current = "0-0";
 
       return await new Promise<void>((resolve) => {
         const poll = async () => {
@@ -200,6 +203,11 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
 
       setIsTranscribing(true);
       setTranscribeError(null);
+      // Reset synchronously, not via the new task's TASK_QUEUED event: between
+      // this click and that event arriving, the reducer still holds the
+      // previous run's chunks/transcriptInProgress, which would flash under
+      // the textarea as soon as isTranscribing turns true.
+      resetStream();
 
       const userSettings = await userService.getUserSettings();
 
@@ -229,7 +237,7 @@ export function TranscribeProvider({ children }: { children: ReactNode }) {
         setTranscribeError(errorMessage);
       }
     },
-    [pollTranscribeStream]
+    [pollTranscribeStream, resetStream]
   );
 
   const clearTranscript = useCallback(() => {
